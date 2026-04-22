@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>机构级股票分析系统</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+
+  :root {
+    --bg: #080c14;
+    --bg2: #0d1420;
+    --bg3: #111c2e;
+    --border: rgba(99,179,237,0.12);
+    --border-bright: rgba(99,179,237,0.35);
+    --text: #e8f0fe;
+    --text-muted: #7090b0;
+    --accent: #63b3ed;
+    --accent2: #f6ad55;
+    --accent3: #68d391;
+    --red: #fc8181;
+    --gold: #ecc94b;
+    --purple: #b794f4;
+    --glow: rgba(99,179,237,0.15);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans SC', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content:'';
+    position:fixed; top:0; left:0; right:0; bottom:0;
+    background-image:
+      linear-gradient(rgba(99,179,237,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(99,179,237,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events:none; z-index:0;
+  }
+
+  .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px;
+    position: relative; z-index:1;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-icon {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    border-radius: 8px;
+    display: flex; align-items:center; justify-content:center;
+    font-size: 18px;
+  }
+
+  .logo-text {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 18px;
+    letter-spacing: -0.5px;
+  }
+
+  .logo-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 1px;
+  }
+
+  .header-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--accent);
+    border: 1px solid var(--border-bright);
+    padding: 4px 10px;
+    border-radius: 20px;
+    letter-spacing: 1px;
+  }
+
+  /* Search bar */
+  .search-section {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 32px;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .search-section::before {
+    content:'';
+    position:absolute; top:-50%; left:-10%;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(99,179,237,0.06) 0%, transparent 70%);
+    pointer-events:none;
+  }
+
+  .search-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .search-row {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+
+  .ticker-input {
+    flex: 1;
+    max-width: 300px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 20px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    outline: none;
+    transition: all 0.2s;
+  }
+
+  .ticker-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(99,179,237,0.12);
+  }
+
+  .ticker-input::placeholder { color: var(--text-muted); font-size: 16px; letter-spacing: 2px; }
+
+  .analyze-btn {
+    background: linear-gradient(135deg, var(--accent), #4299e1);
+    color: #080c14;
+    border: none;
+    border-radius: 10px;
+    padding: 14px 32px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+
+  .analyze-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(99,179,237,0.3); }
+  .analyze-btn:active { transform: translateY(0); }
+  .analyze-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .quick-picks {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+  }
+
+  .quick-btn {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 12px;
+    color: var(--text-muted);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .quick-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Loading */
+  .loading-section {
+    display: none;
+    text-align: center;
+    padding: 60px 20px;
+  }
+
+  .loading-section.visible { display: block; }
+
+  .loading-spinner {
+    width: 48px; height: 48px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 20px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-text {
+    font-family: 'Space Mono', monospace;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+
+  .loading-steps {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .loading-step {
+    font-size: 12px;
+    color: var(--text-muted);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .loading-step.active { opacity: 1; color: var(--accent); }
+
+  /* Results */
+  .results-section { display: none; }
+  .results-section.visible { display: block; }
+
+  /* Stock header */
+  .stock-header {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px 32px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .stock-title {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .stock-ticker-badge {
+    background: linear-gradient(135deg, rgba(99,179,237,0.15), rgba(99,179,237,0.05));
+    border: 1px solid var(--border-bright);
+    border-radius: 10px;
+    padding: 8px 18px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 28px;
+    color: var(--accent);
+    letter-spacing: 2px;
+  }
+
+  .stock-name {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .stock-meta {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  .stock-price-block {
+    text-align: right;
+  }
+
+  .stock-price {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 36px;
+    color: var(--text);
+  }
+
+  .stock-time {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  /* Score section */
+  .score-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  @media (max-width: 900px) { .score-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 500px) { .score-grid { grid-template-columns: 1fr; } }
+
+  .score-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .score-card:hover { border-color: var(--border-bright); }
+
+  .score-card-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .score-value {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 38px;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .score-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .score-bar {
+    height: 3px;
+    background: var(--bg3);
+    border-radius: 2px;
+    margin-top: 12px;
+    overflow: hidden;
+  }
+
+  .score-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 1s ease;
+  }
+
+  /* Dimension cards */
+  .dim-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  @media (max-width: 900px) { .dim-grid { grid-template-columns: 1fr; } }
+
+  .dim-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .dim-number {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 11px;
+    letter-spacing: 2px;
+    margin-bottom: 6px;
+    opacity: 0.5;
+  }
+
+  .dim-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    margin-bottom: 4px;
+  }
+
+  .dim-subtitle {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+    letter-spacing: 1px;
+  }
+
+  .dim-rating {
+    display: inline-block;
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-bottom: 16px;
+  }
+
+  .dim-metrics {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .dim-metric-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    gap: 10px;
+  }
+
+  .dim-metric-row:last-child { border-bottom: none; }
+
+  .dim-metric-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    flex: 1;
+  }
+
+  .dim-metric-val {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* Trade section */
+  .trade-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  @media (max-width: 700px) { .trade-grid { grid-template-columns: 1fr; } }
+
+  .trade-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px;
+  }
+
+  .trade-card.long { border-top: 3px solid var(--accent3); }
+  .trade-card.short { border-top: 3px solid var(--red); }
+
+  .trade-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .trade-direction {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .trade-confidence {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid;
+  }
+
+  .trade-levels {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .trade-level {
+    background: var(--bg3);
+    border-radius: 8px;
+    padding: 12px;
+  }
+
+  .trade-level-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+
+  .trade-level-val {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+  }
+
+  .trade-level-sub {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .trade-rr {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg3);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+  }
+
+  /* Catalysts */
+  .catalysts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  @media (max-width: 700px) { .catalysts-grid { grid-template-columns: 1fr; } }
+
+  .catalyst-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+  }
+
+  .catalyst-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .catalyst-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    list-style: none;
+  }
+
+  .catalyst-item {
+    font-size: 13px;
+    color: var(--text-muted);
+    padding-left: 16px;
+    position: relative;
+    line-height: 1.5;
+  }
+
+  .catalyst-item::before {
+    content: '▸';
+    position: absolute;
+    left: 0;
+    font-size: 10px;
+    top: 2px;
+  }
+
+  /* Risk section */
+  .risk-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--gold);
+    border-radius: 14px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+
+  .risk-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--gold);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .risk-body {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.7;
+    white-space: pre-line;
+  }
+
+  /* Conclusion */
+  .conclusion-card {
+    background: linear-gradient(135deg, rgba(99,179,237,0.08), rgba(183,148,244,0.05));
+    border: 1px solid var(--border-bright);
+    border-radius: 16px;
+    padding: 28px 32px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .conclusion-card::before {
+    content: '"';
+    position: absolute;
+    top: -10px; left: 20px;
+    font-size: 120px;
+    color: rgba(99,179,237,0.08);
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .conclusion-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+
+  .conclusion-text {
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  /* Error */
+  .error-section {
+    display: none;
+    background: rgba(252,129,129,0.08);
+    border: 1px solid rgba(252,129,129,0.3);
+    border-radius: 14px;
+    padding: 24px;
+    color: var(--red);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .error-section.visible { display: block; }
+
+  /* Colors */
+  .c-green { color: var(--accent3); }
+  .c-red { color: var(--red); }
+  .c-blue { color: var(--accent); }
+  .c-gold { color: var(--gold); }
+  .c-purple { color: var(--purple); }
+  .c-orange { color: var(--accent2); }
+
+  .bg-green { background: rgba(104,211,145,0.12); border-color: rgba(104,211,145,0.3); color: var(--accent3); }
+  .bg-red { background: rgba(252,129,129,0.12); border-color: rgba(252,129,129,0.3); color: var(--red); }
+  .bg-blue { background: rgba(99,179,237,0.12); border-color: rgba(99,179,237,0.3); color: var(--accent); }
+  .bg-gold { background: rgba(236,201,75,0.12); border-color: rgba(236,201,75,0.3); color: var(--gold); }
+  .bg-orange { background: rgba(246,173,85,0.12); border-color: rgba(246,173,85,0.3); color: var(--accent2); }
+  .bg-purple { background: rgba(183,148,244,0.12); border-color: rgba(183,148,244,0.3); color: var(--purple); }
+
+  /* Disclaimer */
+  .disclaimer {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-muted);
+    padding: 20px;
+    line-height: 1.6;
+    border-top: 1px solid var(--border);
+    margin-top: 8px;
+  }
+
+  .analysis-raw {
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">📊</div>
+      <div>
+        <div class="logo-text">WALL ST. ANALYZER</div>
+        <div class="logo-sub">INSTITUTIONAL · GRADE · RESEARCH</div>
+      </div>
+    </div>
+    <div class="header-tag">POWERED BY CLAUDE AI</div>
+  </div>
+
+  <!-- Search -->
+  <div class="search-section">
+    <div class="search-label">// 输入股票代码开始三维度分析</div>
+    <div class="search-row">
+      <input
+        type="text"
+        class="ticker-input"
+        id="tickerInput"
+        placeholder="AAPL"
+        maxlength="8"
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <button class="analyze-btn" id="analyzeBtn" onclick="startAnalysis()">
+        ▶ 开始分析
+      </button>
+    </div>
+    <div class="quick-picks">
+      <span style="font-family:'Space Mono',monospace;font-size:10px;color:var(--text-muted);letter-spacing:1px;margin-right:4px;">快捷：</span>
+      <button class="quick-btn" onclick="quickAnalyze('NVDA')">NVDA</button>
+      <button class="quick-btn" onclick="quickAnalyze('AAPL')">AAPL</button>
+      <button class="quick-btn" onclick="quickAnalyze('MSFT')">MSFT</button>
+      <button class="quick-btn" onclick="quickAnalyze('TSLA')">TSLA</button>
+      <button class="quick-btn" onclick="quickAnalyze('CRDO')">CRDO</button>
+      <button class="quick-btn" onclick="quickAnalyze('AMD')">AMD</button>
+      <button class="quick-btn" onclick="quickAnalyze('META')">META</button>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-section" id="loadingSection">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">AI分析师正在工作中...</div>
+    <div class="loading-steps">
+      <div class="loading-step" id="step1">① 搜索实时市场数据</div>
+      <div class="loading-step" id="step2">② 三维度估值分析</div>
+      <div class="loading-step" id="step3">③ 计算综合评分</div>
+      <div class="loading-step" id="step4">④ 生成交易建议</div>
+    </div>
+  </div>
+
+  <!-- Error -->
+  <div class="error-section" id="errorSection"></div>
+
+  <!-- Results -->
+  <div class="results-section" id="resultsSection">
+
+    <!-- Stock Header -->
+    <div class="stock-header" id="stockHeader"></div>
+
+    <!-- Score Cards -->
+    <div class="score-grid" id="scoreGrid"></div>
+
+    <!-- Dimensions -->
+    <div class="dim-grid" id="dimGrid"></div>
+
+    <!-- Trade Cards -->
+    <div class="trade-grid" id="tradeGrid"></div>
+
+    <!-- Catalysts -->
+    <div class="catalysts-grid" id="catalystsGrid"></div>
+
+    <!-- Risk -->
+    <div class="risk-card" id="riskCard"></div>
+
+    <!-- Conclusion -->
+    <div class="conclusion-card" id="conclusionCard"></div>
+
+  </div>
+
+  <div class="disclaimer">
+    ⚠️ 本工具仅供学习研究，不构成投资建议。所有分析基于AI生成，请结合自身判断谨慎决策。
+  </div>
+
+</div>
+
+<!-- Raw storage -->
+<div class="analysis-raw" id="analysisRaw"></div>
+
+<script>
+const PROMPT_TEMPLATE = `你是一位拥有20年经验的华尔街机构级股票分析师，专注于成长股估值与交易决策。
+
+请分析股票：{TICKER}
+
+## 任务
+使用web_search搜索该股票的最新实时数据，然后执行完整的五步分析。
+
+## 第一步：数据获取
+搜索并获取：当前股价、市值、52周高低点、P/E（trailing & forward）、P/S、EV/EBITDA、营收增速YoY、EPS增速YoY、净利润增速、FCF、FCF yield、Beta系数、分析师目标价、评级分布、最近季报数据、14日ATR估算。
+
+## 第二步：三维度分析
+
+**维度一：传统估值**（P/E vs行业、FCF yield vs无风险利率4.3%、EV/EBITDA vs同行）
+→ 结论用：严重高估/高估/合理/低估/严重低估
+
+**维度二：成长逻辑**（PEG ratio、24个月增长消化能力、Rule of 40）
+→ 结论用：增长无法支撑估值/增长勉强支撑/增长可以消化估值/增长明显低估
+
+**维度三：市场共识**（目标价偏差%、评级分布、近期变化趋势）
+→ 结论用：共识显著高于现价/共识略高/共识与现价一致/共识低于现价
+
+## 第三步至第五步：评分、交易建议、风险提示
+
+## 输出格式
+请严格按照以下JSON格式输出，不要包含任何其他文字：
+
+{
+  "ticker": "XXX",
+  "company": "公司全名",
+  "price": "当前价格（数字字符串，如183.32）",
+  "timestamp": "数据时间",
+  "market_cap": "市值",
+  "week52": "52周区间",
+
+  "dim1": {
+    "rating": "高估",
+    "score": 2,
+    "metrics": [
+      {"label": "Trailing P/E", "value": "96x", "note": "行业中位数25x"},
+      {"label": "Forward P/E", "value": "24x", "note": "接近合理区间"},
+      {"label": "FCF Yield", "value": "0.5%", "note": "vs无风险利率4.3%"},
+      {"label": "EV/EBITDA", "value": "53x", "note": "行业均值18x"}
+    ]
+  },
+
+  "dim2": {
+    "rating": "增长可以消化估值",
+    "score": 4,
+    "metrics": [
+      {"label": "营收增速YoY", "value": "+126%", "note": "爆发式增长"},
+      {"label": "EPS增速YoY", "value": "+257%", "note": "利润扩张"},
+      {"label": "PEG Ratio", "value": "0.32", "note": "<1为低估信号"},
+      {"label": "Rule of 40", "value": "158", "note": "基准为40"}
+    ],
+    "key_risk": "核心假设与最大风险一句话"
+  },
+
+  "dim3": {
+    "rating": "共识与现价一致",
+    "score": 3,
+    "metrics": [
+      {"label": "分析师目标价", "value": "$193", "note": "+5.5%空间"},
+      {"label": "评级分布", "value": "14买/0持/0卖", "note": ""},
+      {"label": "近期趋势", "value": "目标价小幅下调", "note": "无降级"},
+      {"label": "下次财报", "value": "2026-06-03", "note": "关键催化剂"}
+    ]
+  },
+
+  "overall_score": 3.5,
+  "weight_note": "成长股权重：传统20%/成长60%/共识20%",
+
+  "direction": "做多",
+  "confidence": "中（60%）",
+
+  "long": {
+    "entry_low": "165",
+    "entry_high": "175",
+    "entry_logic": "回调至支撑区间，优化风险回报",
+    "target1": "207",
+    "target1_pct": "+18%",
+    "target1_trigger": "Q4财报超预期",
+    "target2": "230",
+    "target2_pct": "+32%",
+    "target2_trigger": "光学产品线放量",
+    "stop": "148",
+    "stop_pct": "-9%",
+    "stop_logic": "关键支撑位，基于2×ATR",
+    "rr": "2.5"
+  },
+
+  "short": {
+    "entry_low": "190",
+    "entry_high": "200",
+    "entry_logic": "无催化剂情况下逼近目标价上限",
+    "target1": "170",
+    "target1_pct": "-10%",
+    "target1_trigger": "CPO技术加速商业化",
+    "target2": "155",
+    "target2_pct": "-18%",
+    "target2_trigger": "财报增速低于60%",
+    "stop": "215",
+    "stop_pct": "+7%",
+    "stop_logic": "52周高点上方止损",
+    "rr": "1.5"
+  },
+
+  "bull_catalysts": [
+    "Q4财报超预期（6月3日），营收增速维持80%+",
+    "DustPhotonics收购完成，光学产品线提前放量",
+    "超大规模客户AI资本支出上调"
+  ],
+
+  "bear_catalysts": [
+    "NVIDIA推进CPO路线图替代铜缆时间表",
+    "主要客户数据中心资本支出指引下调",
+    "季报客户集中度恶化"
+  ],
+
+  "risk_text": "最大不确定性：客户集中度超70%营收来自少数超大规模客户。\\n\\n逻辑失效条件：若CPO在2027年前大规模商用，AEC产品线面临结构性替代风险，所有增长假设同步失效。\\n\\n仓位建议：标准（2-3%）——成长逻辑清晰但Beta 2.72意味着大盘跌10%时CRDO可能跌27%，建议等待回调区间建仓。",
+
+  "conclusion": "CRDO不是传统估值题而是增长兑现概率题：传统指标严重高估，但PEG 0.32和Rule of 40得分158表明增长质量极高，75%概率在24个月内消化当前估值；建议在回调区间分批做多，不追高，不做空。"
+}
+
+重要：只输出JSON，不要有任何前言、解释或markdown代码块。`;
+
+async function startAnalysis() {
+  const ticker = document.getElementById('tickerInput').value.trim().toUpperCase();
+  if (!ticker) {
+    document.getElementById('tickerInput').focus();
+    return;
+  }
+  await runAnalysis(ticker);
+}
+
+async function quickAnalyze(ticker) {
+  document.getElementById('tickerInput').value = ticker;
+  await runAnalysis(ticker);
+}
+
+async function runAnalysis(ticker) {
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = true;
+  btn.textContent = '⟳ 分析中...';
+
+  document.getElementById('loadingSection').classList.add('visible');
+  document.getElementById('resultsSection').classList.remove('visible');
+  document.getElementById('errorSection').classList.remove('visible');
+
+  // Animate loading steps
+  const steps = ['step1','step2','step3','step4'];
+  let stepIdx = 0;
+  const stepTimer = setInterval(() => {
+    if (stepIdx > 0) document.getElementById(steps[stepIdx-1]).classList.remove('active');
+    if (stepIdx < steps.length) {
+      document.getElementById(steps[stepIdx]).classList.add('active');
+      stepIdx++;
+    }
+  }, 3000);
+
+  try {
+    const prompt = PROMPT_TEMPLATE.replace('{TICKER}', ticker);
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 4000,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    if (!response.ok) throw new Error(`API错误: ${response.status}`);
+    const data = await response.json();
+
+    // Extract text from response
+    let rawText = '';
+    for (const block of data.content) {
+      if (block.type === 'text') rawText += block.text;
+    }
+
+    // Parse JSON
+    let analysis;
+    try {
+      // Clean up possible markdown fences
+      const cleaned = rawText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      // Find JSON object
+      const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('No JSON found');
+      analysis = JSON.parse(jsonMatch[0]);
+    } catch(e) {
+      throw new Error(`解析失败，AI返回格式异常。原始内容: ${rawText.slice(0,300)}`);
+    }
+
+    clearInterval(stepTimer);
+    steps.forEach(s => document.getElementById(s).classList.remove('active'));
+
+    renderResults(analysis);
+
+  } catch(e) {
+    clearInterval(stepTimer);
+    steps.forEach(s => document.getElementById(s).classList.remove('active'));
+    document.getElementById('errorSection').classList.add('visible');
+    document.getElementById('errorSection').textContent = '❌ 分析失败：' + e.message;
+  } finally {
+    document.getElementById('loadingSection').classList.remove('visible');
+    btn.disabled = false;
+    btn.textContent = '▶ 开始分析';
+  }
+}
+
+function scoreColor(score) {
+  if (score >= 4) return 'c-green';
+  if (score >= 3) return 'c-blue';
+  if (score >= 2) return 'c-orange';
+  return 'c-red';
+}
+
+function ratingBadgeClass(rating) {
+  const r = rating || '';
+  if (r.includes('低估') || r.includes('消化') || r.includes('高于')) return 'bg-green';
+  if (r.includes('合理') || r.includes('勉强') || r.includes('一致')) return 'bg-blue';
+  if (r.includes('高估')) return 'bg-orange';
+  if (r.includes('严重高估') || r.includes('无法') || r.includes('低于')) return 'bg-red';
+  return 'bg-blue';
+}
+
+function directionColor(dir) {
+  if (dir && dir.includes('多')) return 'c-green';
+  if (dir && dir.includes('空')) return 'c-red';
+  return 'c-blue';
+}
+
+function renderResults(d) {
+  // Stock header
+  document.getElementById('stockHeader').innerHTML = `
+    <div class="stock-title">
+      <div class="stock-ticker-badge">${d.ticker || 'N/A'}</div>
+      <div>
+        <div class="stock-name">${d.company || ''}</div>
+        <div class="stock-meta">市值 ${d.market_cap || 'N/A'} &nbsp;|&nbsp; 52W ${d.week52 || 'N/A'}</div>
+      </div>
+    </div>
+    <div class="stock-price-block">
+      <div class="stock-price">$${d.price || 'N/A'}</div>
+      <div class="stock-time">数据时间：${d.timestamp || '实时'}</div>
+    </div>
+  `;
+
+  // Score cards
+  const score = parseFloat(d.overall_score) || 0;
+  const scoreBarColor = score >= 4 ? '#68d391' : score >= 3 ? '#63b3ed' : score >= 2 ? '#f6ad55' : '#fc8181';
+  document.getElementById('scoreGrid').innerHTML = `
+    <div class="score-card">
+      <div class="score-card-label">综合评分</div>
+      <div class="score-value ${scoreColor(score)}">${d.overall_score || 'N/A'}</div>
+      <div class="score-desc">满分 5.0</div>
+      <div class="score-bar"><div class="score-bar-fill" style="width:${(score/5)*100}%;background:${scoreBarColor}"></div></div>
+    </div>
+    <div class="score-card">
+      <div class="score-card-label">交易方向</div>
+      <div class="score-value ${directionColor(d.direction)}" style="font-size:28px">${d.direction || 'N/A'}</div>
+      <div class="score-desc">${d.confidence || ''}</div>
+    </div>
+    <div class="score-card">
+      <div class="score-card-label">传统估值</div>
+      <div class="score-value ${scoreColor(d.dim1?.score)}">${d.dim1?.score || 'N/A'}<span style="font-size:16px;font-family:'Space Mono';opacity:0.5">/5</span></div>
+      <div class="score-desc">${d.dim1?.rating || ''}</div>
+      <div class="score-bar"><div class="score-bar-fill" style="width:${(d.dim1?.score||0)/5*100}%;background:#f6ad55"></div></div>
+    </div>
+    <div class="score-card">
+      <div class="score-card-label">成长逻辑</div>
+      <div class="score-value ${scoreColor(d.dim2?.score)}">${d.dim2?.score || 'N/A'}<span style="font-size:16px;font-family:'Space Mono';opacity:0.5">/5</span></div>
+      <div class="score-desc">${d.dim2?.rating || ''}</div>
+      <div class="score-bar"><div class="score-bar-fill" style="width:${(d.dim2?.score||0)/5*100}%;background:#68d391"></div></div>
+    </div>
+  `;
+
+  // Dimensions
+  function renderDimMetrics(metrics) {
+    if (!metrics || !metrics.length) return '';
+    return metrics.map(m => `
+      <div class="dim-metric-row">
+        <span class="dim-metric-label">${m.label}</span>
+        <div style="text-align:right">
+          <div class="dim-metric-val">${m.value}</div>
+          ${m.note ? `<div style="font-size:10px;color:var(--text-muted);font-family:'Space Mono'">${m.note}</div>` : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('dimGrid').innerHTML = `
+    <div class="dim-card">
+      <div class="dim-number">DIMENSION 01</div>
+      <div class="dim-title">传统估值</div>
+      <div class="dim-subtitle">VALUE ANCHOR</div>
+      <div class="dim-rating ${ratingBadgeClass(d.dim1?.rating)}">${d.dim1?.rating || 'N/A'}</div>
+      <div class="dim-metrics">${renderDimMetrics(d.dim1?.metrics)}</div>
+    </div>
+    <div class="dim-card">
+      <div class="dim-number">DIMENSION 02</div>
+      <div class="dim-title">成长逻辑</div>
+      <div class="dim-subtitle">GROWTH CAPACITY</div>
+      <div class="dim-rating ${ratingBadgeClass(d.dim2?.rating)}">${d.dim2?.rating || 'N/A'}</div>
+      <div class="dim-metrics">${renderDimMetrics(d.dim2?.metrics)}</div>
+      ${d.dim2?.key_risk ? `<div style="margin-top:14px;padding:10px 12px;background:rgba(246,173,85,0.08);border-radius:8px;border:1px solid rgba(246,173,85,0.2);font-size:11px;color:var(--accent2);line-height:1.5">⚠ ${d.dim2.key_risk}</div>` : ''}
+    </div>
+    <div class="dim-card">
+      <div class="dim-number">DIMENSION 03</div>
+      <div class="dim-title">市场共识</div>
+      <div class="dim-subtitle">CONSENSUS PRICING</div>
+      <div class="dim-rating ${ratingBadgeClass(d.dim3?.rating)}">${d.dim3?.rating || 'N/A'}</div>
+      <div class="dim-metrics">${renderDimMetrics(d.dim3?.metrics)}</div>
+    </div>
+  `;
+
+  // Trade cards
+  const long = d.long || {};
+  const short = d.short || {};
+  document.getElementById('tradeGrid').innerHTML = `
+    <div class="trade-card long">
+      <div class="trade-header">
+        <div class="trade-direction c-green">↑ 做多方案</div>
+        <div class="trade-confidence" style="border-color:var(--accent3);color:var(--accent3)">LONG</div>
+      </div>
+      <div class="trade-levels">
+        <div class="trade-level">
+          <div class="trade-level-label">入场区间</div>
+          <div class="trade-level-val c-blue">$${long.entry_low||'?'} – $${long.entry_high||'?'}</div>
+          <div class="trade-level-sub">${long.entry_logic||''}</div>
+        </div>
+        <div class="trade-level">
+          <div class="trade-level-label">止损位</div>
+          <div class="trade-level-val c-red">$${long.stop||'?'}</div>
+          <div class="trade-level-sub">${long.stop_pct||''} · ${long.stop_logic||''}</div>
+        </div>
+        <div class="trade-level">
+          <div class="trade-level-label">目标一</div>
+          <div class="trade-level-val c-green">$${long.target1||'?'}</div>
+          <div class="trade-level-sub">${long.target1_pct||''} · ${long.target1_trigger||''}</div>
+        </div>
+        <div class="trade-level">
+          <div class="trade-level-label">目标二</div>
+          <div class="trade-level-val c-green">$${long.target2||'?'}</div>
+          <div class="trade-level-sub">${long.target2_pct||''} · ${long.target2_trigger||''}</div>
+        </div>
+      </div>
+      <div class="trade-rr">
+        <span style="color:var(--text-muted)">风险回报比</span>
+        <span class="c-green" style="font-weight:700">${long.rr||'?'}:1</span>
+      </div>
+    </div>
+    <div class="trade-card short">
+      <div class="trade-header">
+        <div class="trade-direction c-red">↓ 做空方案</div>
+        <div class="trade-confidence" style="border-color:var(--red);color:var(--red)">SHORT</div>
+      </div>
+      <div class="trade-levels">
+        <div class="trade-level">
+          <div class="trade-level-label">入场区间</div>
+          <div class="trade-level-val c-blue">$${short.entry_low||'?'} – $${short.entry_high||'?'}</div>
+          <div class="trade-level-sub">${short.entry_logic||''}</div>
+        </div>
+        <div class="trade-level">
+          <div class="trade-level-label">止损位</div>
+          <div class="trade-level-val c-green">$${short.stop||'?'}</div>
+          <div class="trade-level-sub">${short.stop_pct||''} · ${short.stop_logic||''}</div>
+        </div>
+        <div class="trade-level">
+          <div class="trade-level-label">目标一</div>
+          <div class="trade-level-val c-red">$${short.target1||'?'}</div>
+          <div class="trade-level-sub">${short.target1_pct||''} · ${short.target1_trigger||''}</div>
+        </div>
+        <div class="trade-level">
+          <div class="trade-level-label">目标二</div>
+          <div class="trade-level-val c-red">$${short.target2||'?'}</div>
+          <div class="trade-level-sub">${short.target2_pct||''} · ${short.target2_trigger||''}</div>
+        </div>
+      </div>
+      <div class="trade-rr">
+        <span style="color:var(--text-muted)">风险回报比</span>
+        <span class="c-red" style="font-weight:700">${short.rr||'?'}:1</span>
+      </div>
+    </div>
+  `;
+
+  // Catalysts
+  const bulls = d.bull_catalysts || [];
+  const bears = d.bear_catalysts || [];
+  document.getElementById('catalystsGrid').innerHTML = `
+    <div class="catalyst-card">
+      <div class="catalyst-title c-green">🚀 做多催化剂</div>
+      <ul class="catalyst-list">
+        ${bulls.map(c => `<li class="catalyst-item" style="color:var(--text)">${c}</li>`).join('')}
+      </ul>
+    </div>
+    <div class="catalyst-card">
+      <div class="catalyst-title c-red">⚠️ 做空催化剂</div>
+      <ul class="catalyst-list">
+        ${bears.map(c => `<li class="catalyst-item" style="color:var(--text)">${c}</li>`).join('')}
+      </ul>
+    </div>
+  `;
+
+  // Risk
+  document.getElementById('riskCard').innerHTML = `
+    <div class="risk-title">⚡ 风险提示 & 仓位建议</div>
+    <div class="risk-body">${(d.risk_text || '').replace(/\\n/g, '\n')}</div>
+  `;
+
+  // Conclusion
+  document.getElementById('conclusionCard').innerHTML = `
+    <div class="conclusion-label">// CORE CONCLUSION</div>
+    <div class="conclusion-text">${d.conclusion || ''}</div>
+  `;
+
+  document.getElementById('resultsSection').classList.add('visible');
+  document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Enter key support
+document.getElementById('tickerInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') startAnalysis();
+});
+
+// Auto uppercase
+document.getElementById('tickerInput').addEventListener('input', e => {
+  e.target.value = e.target.value.toUpperCase();
+});
+</script>
+</body>
+</html>
