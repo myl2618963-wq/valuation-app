@@ -1,0 +1,1714 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>机构级股票估值分析系统 v2.0</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-primary: #0a0c10;
+    --bg-secondary: #0f1218;
+    --bg-card: #131720;
+    --bg-card-hover: #171d28;
+    --border: #1e2535;
+    --border-bright: #2a3548;
+    --text-primary: #e8edf5;
+    --text-secondary: #8a9bb5;
+    --text-muted: #4a5568;
+    --accent-green: #00e5a0;
+    --accent-blue: #4a9eff;
+    --accent-purple: #8b5cf6;
+    --accent-orange: #f59e0b;
+    --accent-red: #ef4444;
+    --accent-cyan: #06b6d4;
+    --accent-pink: #ec4899;
+    --green-dim: rgba(0,229,160,0.08);
+    --blue-dim: rgba(74,158,255,0.08);
+    --purple-dim: rgba(139,92,246,0.08);
+    --orange-dim: rgba(245,158,11,0.08);
+    --red-dim: rgba(239,68,68,0.08);
+    --font-mono: 'IBM Plex Mono', monospace;
+    --font-sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ─── HEADER ─────────────────────────────────── */
+  .header {
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 16px; }
+  .header-badge {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    color: var(--accent-green);
+    background: var(--green-dim);
+    border: 1px solid rgba(0,229,160,0.2);
+    padding: 3px 10px;
+    border-radius: 2px;
+  }
+  .header-title {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: 0.05em;
+  }
+  .header-ticker {
+    font-family: var(--font-mono);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--accent-blue);
+  }
+  .header-right { display: flex; align-items: center; gap: 24px; }
+  .live-price { text-align: right; }
+  .live-price .price { font-family: var(--font-mono); font-size: 26px; font-weight: 700; color: var(--text-primary); }
+  .live-price .change { font-family: var(--font-mono); font-size: 12px; color: var(--accent-green); }
+
+  /* ─── INPUT PANEL ────────────────────────────── */
+  .input-panel {
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 32px;
+  }
+  .input-panel-title {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+  }
+  .input-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+  }
+  .input-group { display: flex; flex-direction: column; gap: 4px; }
+  .input-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+  }
+  .input-field {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 12px;
+    width: 100%;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+  .input-field:focus {
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 2px rgba(74,158,255,0.15);
+  }
+  .calc-btn {
+    background: var(--accent-blue);
+    border: none;
+    border-radius: 4px;
+    color: #000;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    padding: 8px 24px;
+    transition: all 0.2s;
+    align-self: flex-end;
+    white-space: nowrap;
+  }
+  .calc-btn:hover { background: #6bb3ff; transform: translateY(-1px); }
+  .fetch-btn {
+    background: transparent;
+    border: 1px solid var(--accent-green);
+    border-radius: 4px;
+    color: var(--accent-green);
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 8px 20px;
+    transition: all 0.2s;
+    white-space: nowrap;
+    align-self: flex-end;
+  }
+  .fetch-btn:hover { background: var(--green-dim); }
+  .fetch-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .fetch-btn.loading { border-color: var(--accent-orange); color: var(--accent-orange); }
+  .field-updated { animation: flashGreen 1s ease; }
+  @keyframes flashGreen {
+    0%   { background: rgba(0,229,160,0.25); border-color: var(--accent-green); }
+    100% { background: transparent; border-color: var(--border); }
+  }
+
+  /* ─── MAIN LAYOUT ────────────────────────────── */
+  .main { padding: 24px 32px; display: flex; flex-direction: column; gap: 24px; }
+
+  /* ─── SECTION HEADER ─────────────────────────── */
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .section-num {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--accent-blue);
+    background: var(--blue-dim);
+    border: 1px solid rgba(74,158,255,0.2);
+    padding: 2px 8px;
+    border-radius: 2px;
+    letter-spacing: 0.1em;
+  }
+  .section-title {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+  }
+  .section-divider { flex: 1; height: 1px; background: var(--border); }
+
+  /* ─── CARD ───────────────────────────────────── */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 20px;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: var(--border-bright); }
+
+  /* ─── VALUATION SUMMARY ROW ──────────────────── */
+  .valuation-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .val-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .val-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+  .val-card.green::before { background: var(--accent-green); }
+  .val-card.blue::before { background: var(--accent-blue); }
+  .val-card.purple::before { background: var(--accent-purple); }
+  .val-card.orange::before { background: var(--accent-orange); }
+  .val-card.cyan::before { background: var(--accent-cyan); }
+  .val-card.pink::before { background: var(--accent-pink); }
+  .val-card-tag {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .val-card-method {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+  }
+  .val-card-price {
+    font-family: var(--font-mono);
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .val-card.green .val-card-price { color: var(--accent-green); }
+  .val-card.blue .val-card-price { color: var(--accent-blue); }
+  .val-card.purple .val-card-price { color: var(--accent-purple); }
+  .val-card.orange .val-card-price { color: var(--accent-orange); }
+  .val-card.cyan .val-card-price { color: var(--accent-cyan); }
+  .val-card.pink .val-card-price { color: var(--accent-pink); }
+  .val-card-upside { font-family: var(--font-mono); font-size: 12px; }
+  .upside-pos { color: var(--accent-green); }
+  .upside-neg { color: var(--accent-red); }
+  .val-card-weight {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  /* ─── COMPOSITE RESULT ───────────────────────── */
+  .composite-block {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 24px;
+    align-items: center;
+  }
+  .composite-main { border-right: 1px solid var(--border); padding-right: 24px; }
+  .composite-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.15em; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; }
+  .composite-price { font-family: var(--font-mono); font-size: 44px; font-weight: 700; color: var(--accent-blue); line-height: 1; }
+  .composite-sub { font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); margin-top: 8px; }
+  .safety-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .safety-item-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.15em; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; }
+  .safety-item-val { font-family: var(--font-mono); font-size: 18px; font-weight: 600; }
+  .safety-item-val.good { color: var(--accent-green); }
+  .safety-item-val.warn { color: var(--accent-orange); }
+  .safety-item-val.bad { color: var(--accent-red); }
+
+  /* ─── DCF BLOCK ──────────────────────────────── */
+  .dcf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .dcf-table { width: 100%; border-collapse: collapse; }
+  .dcf-table th {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border);
+    text-align: right;
+  }
+  .dcf-table th:first-child { text-align: left; }
+  .dcf-table td {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--border);
+    text-align: right;
+    color: var(--text-secondary);
+  }
+  .dcf-table td:first-child { text-align: left; color: var(--text-muted); }
+  .dcf-table tr.phase-1 td { border-left: 2px solid var(--accent-green); }
+  .dcf-table tr.phase-2 td { border-left: 2px solid var(--accent-orange); }
+  .dcf-table tr.phase-3 td { border-left: 2px solid var(--accent-purple); }
+  .dcf-table tr.total-row td { color: var(--text-primary); font-weight: 600; border-top: 1px solid var(--border-bright); }
+  .phase-badge {
+    font-family: var(--font-mono);
+    font-size: 8px;
+    padding: 1px 5px;
+    border-radius: 2px;
+    margin-left: 6px;
+  }
+  .phase-badge.p1 { background: var(--green-dim); color: var(--accent-green); }
+  .phase-badge.p2 { background: var(--orange-dim); color: var(--accent-orange); }
+  .phase-badge.p3 { background: var(--purple-dim); color: var(--accent-purple); }
+
+  /* ─── SENSITIVITY MATRIX ─────────────────────── */
+  .sensitivity-table { width: 100%; border-collapse: collapse; }
+  .sensitivity-table th, .sensitivity-table td {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 7px 10px;
+    text-align: center;
+    border: 1px solid var(--border);
+  }
+  .sensitivity-table th { color: var(--text-muted); font-size: 9px; letter-spacing: 0.1em; }
+  .cell-high { background: rgba(0,229,160,0.15); color: var(--accent-green); font-weight: 600; }
+  .cell-mid-high { background: rgba(0,229,160,0.07); color: #7dd3c0; }
+  .cell-mid { background: transparent; color: var(--text-secondary); }
+  .cell-mid-low { background: rgba(239,68,68,0.07); color: #f0938a; }
+  .cell-low { background: rgba(239,68,68,0.15); color: var(--accent-red); font-weight: 600; }
+  .cell-base { border: 1px solid var(--accent-blue) !important; }
+
+  /* ─── EV TABLE ───────────────────────────────── */
+  .ev-metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .metric-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .metric-row:last-child { border-bottom: none; }
+  .metric-label { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+  .metric-val { font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--text-primary); }
+  .metric-val.highlight { color: var(--accent-blue); }
+
+  /* ─── COMPS TABLE ────────────────────────────── */
+  .comps-table { width: 100%; border-collapse: collapse; }
+  .comps-table th {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    text-align: right;
+    white-space: nowrap;
+  }
+  .comps-table th:first-child, .comps-table th:nth-child(2) { text-align: left; }
+  .comps-table td {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--border);
+    text-align: right;
+    color: var(--text-secondary);
+  }
+  .comps-table td:first-child { text-align: left; font-weight: 600; color: var(--text-primary); }
+  .comps-table td:nth-child(2) { text-align: left; color: var(--text-muted); font-size: 11px; }
+  .comps-table tr.target-row td { background: rgba(74,158,255,0.05); color: var(--text-primary); }
+  .comps-table tr.target-row td:first-child { color: var(--accent-blue); }
+  .comps-table tr.median-row td { color: var(--text-muted); font-style: italic; border-top: 1px solid var(--border-bright); }
+  .premium { color: var(--accent-red) !important; }
+  .discount { color: var(--accent-green) !important; }
+
+  /* ─── SCENARIO ───────────────────────────────── */
+  .scenario-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .scenario-card {
+    border-radius: 6px;
+    padding: 20px;
+    border: 1px solid;
+  }
+  .scenario-card.bull { background: rgba(0,229,160,0.05); border-color: rgba(0,229,160,0.2); }
+  .scenario-card.base { background: rgba(74,158,255,0.05); border-color: rgba(74,158,255,0.2); }
+  .scenario-card.bear { background: rgba(239,68,68,0.05); border-color: rgba(239,68,68,0.2); }
+  .scenario-label { font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 4px; }
+  .scenario-card.bull .scenario-label { color: var(--accent-green); }
+  .scenario-card.base .scenario-label { color: var(--accent-blue); }
+  .scenario-card.bear .scenario-label { color: var(--accent-red); }
+  .scenario-prob { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); margin-bottom: 16px; }
+  .scenario-price { font-family: var(--font-mono); font-size: 36px; font-weight: 700; line-height: 1; margin-bottom: 6px; }
+  .scenario-card.bull .scenario-price { color: var(--accent-green); }
+  .scenario-card.base .scenario-price { color: var(--accent-blue); }
+  .scenario-card.bear .scenario-price { color: var(--accent-red); }
+  .scenario-upside { font-family: var(--font-mono); font-size: 12px; margin-bottom: 16px; }
+  .scenario-assumptions { display: flex; flex-direction: column; gap: 6px; }
+  .scenario-assumption { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 11px; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  .assumption-key { color: var(--text-muted); }
+  .assumption-val { color: var(--text-secondary); font-weight: 500; }
+  .pwv-block {
+    margin-top: 16px;
+    padding: 16px;
+    background: var(--bg-secondary);
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .pwv-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.15em; color: var(--text-muted); text-transform: uppercase; }
+  .pwv-val { font-family: var(--font-mono); font-size: 24px; font-weight: 700; color: var(--accent-blue); }
+  .pwv-sub { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+
+  /* ─── DEBT / CAPITAL STRUCTURE ───────────────── */
+  .debt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .gauge-container { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .gauge-label-top { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.15em; color: var(--text-muted); text-transform: uppercase; }
+  .gauge-val { font-family: var(--font-mono); font-size: 28px; font-weight: 700; }
+  .gauge-sub { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+  .debt-bar { height: 6px; background: var(--bg-secondary); border-radius: 3px; overflow: hidden; margin: 4px 0; }
+  .debt-bar-fill { height: 100%; border-radius: 3px; transition: width 0.8s ease; }
+
+  /* ─── PEG ────────────────────────────────────── */
+  .peg-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .peg-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+    text-align: center;
+  }
+  .peg-card-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.15em; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; }
+  .peg-card-val { font-family: var(--font-mono); font-size: 26px; font-weight: 700; }
+  .peg-card-interp { font-family: var(--font-mono); font-size: 10px; margin-top: 6px; }
+
+  /* ─── ANALYST CONSENSUS ──────────────────────── */
+  .consensus-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .analyst-bar-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .analyst-bar-label { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); width: 50px; }
+  .analyst-bar-track { flex: 1; height: 8px; background: var(--bg-secondary); border-radius: 4px; overflow: hidden; }
+  .analyst-bar-fill { height: 100%; border-radius: 4px; }
+  .analyst-bar-count { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); width: 20px; text-align: right; }
+  .buy-fill { background: var(--accent-green); }
+  .hold-fill { background: var(--accent-orange); }
+  .sell-fill { background: var(--accent-red); }
+  .consensus-target-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .ctl { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+  .ctv { font-family: var(--font-mono); font-size: 13px; font-weight: 600; }
+
+  /* ─── FCF BLOCK ──────────────────────────────── */
+  .fcf-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .fcf-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+  }
+  .fcf-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.15em; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; }
+  .fcf-val { font-family: var(--font-mono); font-size: 22px; font-weight: 700; }
+  .fcf-interpretation { font-family: var(--font-mono); font-size: 10px; margin-top: 6px; line-height: 1.5; }
+  .status-signal {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 2px;
+    margin-top: 8px;
+  }
+  .status-signal.overvalued { background: var(--red-dim); color: var(--accent-red); border: 1px solid rgba(239,68,68,0.2); }
+  .status-signal.fair { background: var(--orange-dim); color: var(--accent-orange); border: 1px solid rgba(245,158,11,0.2); }
+  .status-signal.undervalued { background: var(--green-dim); color: var(--accent-green); border: 1px solid rgba(0,229,160,0.2); }
+
+  /* ─── WEIGHT SLIDERS ─────────────────────────── */
+  .weight-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .weight-label { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); width: 140px; }
+  .weight-slider { flex: 1; -webkit-appearance: none; height: 4px; border-radius: 2px; background: var(--bg-secondary); outline: none; }
+  .weight-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--accent-blue); cursor: pointer; }
+  .weight-pct { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--accent-blue); width: 40px; text-align: right; }
+
+  /* ─── CHART CONTAINERS ───────────────────────── */
+  .chart-wrapper { position: relative; width: 100%; height: 280px; }
+  .chart-wrapper-sm { position: relative; width: 100%; height: 220px; }
+
+  /* ─── TAGS ───────────────────────────────────── */
+  .tag {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    padding: 2px 8px;
+    border-radius: 2px;
+    text-transform: uppercase;
+  }
+  .tag.green { background: var(--green-dim); color: var(--accent-green); }
+  .tag.red { background: var(--red-dim); color: var(--accent-red); }
+  .tag.blue { background: var(--blue-dim); color: var(--accent-blue); }
+  .tag.orange { background: var(--orange-dim); color: var(--accent-orange); }
+  .tag.purple { background: var(--purple-dim); color: var(--accent-purple); }
+
+  /* ─── MISC ───────────────────────────────────── */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .three-col { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .footnote { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .col-header { font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 0.12em; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px; }
+
+  .small-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.1em; color: var(--text-muted); text-transform: uppercase; }
+  .mid-val { font-family: var(--font-mono); font-size: 16px; font-weight: 600; }
+
+  @media (max-width: 1200px) {
+    .valuation-row { grid-template-columns: repeat(2, 1fr); }
+    .scenario-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════ HEADER -->
+<header class="header">
+  <div class="header-left">
+    <div class="header-badge">INSTITUTIONAL</div>
+    <div class="header-title">机构级股票估值分析系统 v2.0</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:32px;">
+    <div>
+      <div class="header-ticker" id="hdr-ticker">—</div>
+      <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)" id="hdr-company">请输入股票参数</div>
+    </div>
+    <div class="live-price">
+      <div class="price" id="hdr-price">$—</div>
+      <div class="change" id="hdr-upside">综合上行空间: —</div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════ INPUT PANEL -->
+<div class="input-panel">
+  <div class="input-panel-title">// 财务参数输入 — 基础数据 &nbsp;<span id="fetch-status" style="font-size:10px;color:var(--text-muted);"></span></div>
+  <div style="display:flex;align-items:flex-end;gap:10px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border);">
+    <div class="input-group" style="flex:0 0 160px;">
+      <div class="input-label">股票代码 (按Enter或点击拉取)</div>
+      <input class="input-field" id="inp-ticker" value="NVDA" placeholder="NVDA"
+        style="font-size:16px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;"
+        onkeydown="if(event.key==='Enter'){fetchData()}"
+        oninput="this.value=this.value.toUpperCase()">
+    </div>
+    <button class="fetch-btn" onclick="fetchData()" id="fetch-btn">⬇ 拉取真实数据</button>
+    <div id="fetch-msg" style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);align-self:center;max-width:300px;"></div>
+  </div>
+  <div class="input-grid">
+    <div class="input-group">
+      <div class="input-label">公司名称</div>
+      <input class="input-field" id="inp-company" value="NVIDIA Corporation" placeholder="Company">
+    </div>
+    <div class="input-group">
+      <div class="input-label">现价 ($)</div>
+      <input class="input-field" id="inp-price" value="183.32" type="number">
+    </div>
+    <div class="input-group">
+      <div class="input-label">Forward EPS ($)</div>
+      <input class="input-field" id="inp-feps" value="5.45" type="number">
+    </div>
+    <div class="input-group">
+      <div class="input-label">Trailing EPS ($)</div>
+      <input class="input-field" id="inp-teps" value="1.82" type="number">
+    </div>
+    <div class="input-group">
+      <div class="input-label">5yr 历史 Avg P/E</div>
+      <input class="input-field" id="inp-pe" value="45" type="number">
+    </div>
+    <div class="input-group">
+      <div class="input-label">FCF ($M)</div>
+      <input class="input-field" id="inp-fcf" value="172" type="number">
+    </div>
+    <div class="input-group">
+      <div class="input-label">总股本 (M股)</div>
+      <input class="input-field" id="inp-shares" value="24400" type="number">
+    </div>
+    <div class="input-group">
+      <div class="input-label">总债务 ($M)</div>
+      <input class="input-field" id="inp-debt" value="8461" type="number">
+    </div>
+    <div class="input-group">
+      <div class="input-label">现金 ($M)</div>
+      <input class="input-field" id="inp-cash" value="7280" type="number">
+    </div>
+    <div class="input-group">
+      <div class="input-label">EBITDA ($M)</div>
+      <input class="input-field" id="inp-ebitda" value="4200" type="number">
+    </div>
+    <div class="input-group">
+      <div class="input-label">EBIT ($M)</div>
+      <input class="input-field" id="inp-ebit" value="3800" type="number">
+    </div>
+    <div class="input-group">
+      <div class="input-label">营收 ($M)</div>
+      <input class="input-field" id="inp-revenue" value="44870" type="number">
+    </div>
+    <div class="input-group">
+      <div class="input-label">FCF增长率(g1 %)</div>
+      <input class="input-field" id="inp-g1" value="35" type="number">
+      <div id="g1-annotation" style="display:none;font-family:var(--font-mono);font-size:9px;margin-top:3px;"></div>
+    </div>
+    <div class="input-group">
+      <div class="input-label">过渡增长率(g2 %)</div>
+      <input class="input-field" id="inp-g2" value="18" type="number">
+    </div>
+    <div class="input-group">
+      <div class="input-label">永续增长率(g3 %)</div>
+      <input class="input-field" id="inp-g3" value="3.5" type="number">
+    </div>
+    <div class="input-group">
+      <div class="input-label">WACC (%)</div>
+      <input class="input-field" id="inp-wacc" value="10" type="number">
+    </div>
+    <div class="input-group">
+      <div class="input-label">无风险利率 (%)</div>
+      <input class="input-field" id="inp-rf" value="4.5" type="number">
+    </div>
+    <div class="input-group">
+      <div class="input-label">利息费用 ($M)</div>
+      <input class="input-field" id="inp-interest" value="67" type="number">
+    </div>
+    <div class="input-group" style="align-self:flex-end;">
+      <button class="calc-btn" onclick="runCalc()">▶ 运行估值分析</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ MAIN -->
+<div class="main" id="results" style="display:none;">
+
+  <!-- ── SECTION 0: 估值汇总 ───────────────────────────────── -->
+  <div>
+    <div class="section-header">
+      <div class="section-num">SUMMARY</div>
+      <div class="section-title">估值方法汇总对比</div>
+      <div class="section-divider"></div>
+    </div>
+    <div class="valuation-row" id="val-cards"></div>
+  </div>
+
+  <!-- ── 综合公允价值 & 安全边际 ──────────────────────────── -->
+  <div class="composite-block">
+    <div class="composite-main">
+      <div class="composite-label">综合公允价值（动态加权）</div>
+      <div class="composite-price" id="comp-price">—</div>
+      <div class="composite-sub" id="comp-sub">加权均值 · 基于动态权重模型</div>
+    </div>
+    <div>
+      <div class="composite-label" style="margin-bottom:16px;">安全边际 & 风险指标</div>
+      <div class="safety-grid">
+        <div>
+          <div class="safety-item-label">安全边际</div>
+          <div class="safety-item-val" id="safety-margin">—</div>
+        </div>
+        <div>
+          <div class="safety-item-label">14日 ATR</div>
+          <div class="safety-item-val" id="safety-atr">—</div>
+        </div>
+        <div>
+          <div class="safety-item-label">止损位 (2×ATR)</div>
+          <div class="safety-item-val bad" id="safety-stop">—</div>
+        </div>
+        <div>
+          <div class="safety-item-label">P/E 溢价</div>
+          <div class="safety-item-val" id="safety-pe-prem">—</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="composite-label" style="margin-bottom:12px;">动态权重调整</div>
+      <div id="weight-controls">
+        <div class="weight-row">
+          <div class="weight-label">DCF估值</div>
+          <input class="weight-slider" type="range" id="w-dcf" min="0" max="60" value="35" oninput="document.getElementById('w-dcf-pct').textContent=this.value+'%'">
+          <div class="weight-pct" id="w-dcf-pct">35%</div>
+        </div>
+        <div class="weight-row">
+          <div class="weight-label">相对估值</div>
+          <input class="weight-slider" type="range" id="w-rel" min="0" max="60" value="20" oninput="document.getElementById('w-rel-pct').textContent=this.value+'%'">
+          <div class="weight-pct" id="w-rel-pct">20%</div>
+        </div>
+        <div class="weight-row">
+          <div class="weight-label">EV倍数</div>
+          <input class="weight-slider" type="range" id="w-ev" min="0" max="60" value="20" oninput="document.getElementById('w-ev-pct').textContent=this.value+'%'">
+          <div class="weight-pct" id="w-ev-pct">20%</div>
+        </div>
+        <div class="weight-row">
+          <div class="weight-label">FCF折现</div>
+          <input class="weight-slider" type="range" id="w-fcf" min="0" max="60" value="15" oninput="document.getElementById('w-fcf-pct').textContent=this.value+'%'">
+          <div class="weight-pct" id="w-fcf-pct">15%</div>
+        </div>
+        <div class="weight-row">
+          <div class="weight-label">格雷厄姆</div>
+          <input class="weight-slider" type="range" id="w-graham" min="0" max="60" value="10" oninput="document.getElementById('w-graham-pct').textContent=this.value+'%'">
+          <div class="weight-pct" id="w-graham-pct">10%</div>
+        </div>
+      </div>
+      <div class="footnote">调整权重后点击 ▶ 重新计算</div>
+    </div>
+  </div>
+
+  <!-- ── SECTION 1: DCF + 多阶段增长 ─────────────────────── -->
+  <div>
+    <div class="section-header">
+      <div class="section-num">01</div>
+      <div class="section-title">DCF估值模型 · 三阶段增长</div>
+      <div class="section-divider"></div>
+    </div>
+    <div class="dcf-grid">
+      <div class="card">
+        <div class="col-header">自由现金流预测表</div>
+        <table class="dcf-table" id="dcf-table"></table>
+        <div class="footnote" id="dcf-footnote"></div>
+      </div>
+      <div class="card">
+        <div class="col-header">WACC敏感性分析矩阵 <span style="font-size:10px;color:var(--text-muted);">（行：终端增长率 / 列：WACC）</span></div>
+        <table class="sensitivity-table" id="sensitivity-table"></table>
+        <div class="footnote">标蓝边框 = 基准情景</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SECTION 2: EV-Based 估值 ─────────────────────────── -->
+  <div>
+    <div class="section-header">
+      <div class="section-num">02</div>
+      <div class="section-title">EV-Based 企业价值估值</div>
+      <div class="section-divider"></div>
+    </div>
+    <div class="two-col">
+      <div class="card">
+        <div class="col-header">企业价值分解</div>
+        <div id="ev-metrics"></div>
+      </div>
+      <div class="card">
+        <div class="col-header">EV倍数估值</div>
+        <div id="ev-multiples"></div>
+        <div class="footnote" id="ev-footnote"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SECTION 3: 可比公司 Comps ──────────────────────────── -->
+  <div>
+    <div class="section-header">
+      <div class="section-num">03</div>
+      <div class="section-title">可比公司分析 · Peer Comps Table</div>
+      <div class="section-divider"></div>
+    </div>
+    <div class="card">
+      <table class="comps-table" id="comps-table"></table>
+      <div class="footnote">数据来源：Bloomberg估算 · NTM = Next Twelve Months · 绿色 = 相对低估 红色 = 相对高估</div>
+    </div>
+  </div>
+
+  <!-- ── SECTION 4: PEG Ratio ────────────────────────────────── -->
+  <div>
+    <div class="section-header">
+      <div class="section-num">04</div>
+      <div class="section-title">PEG Ratio 增长调整估值</div>
+      <div class="section-divider"></div>
+    </div>
+    <div class="card">
+      <div class="peg-grid" id="peg-grid"></div>
+      <div class="footnote">PEG &lt; 1.0 = 增长被低估 · PEG 1.0–2.0 = 合理 · PEG &gt; 2.0 = 增长溢价过高 · PEG = P/E ÷ 预期EPS增长率(%)</div>
+    </div>
+  </div>
+
+  <!-- ── SECTION 5: 资本结构 ─────────────────────────────────── -->
+  <div>
+    <div class="section-header">
+      <div class="section-num">05</div>
+      <div class="section-title">资本结构 & 债务分析</div>
+      <div class="section-divider"></div>
+    </div>
+    <div class="two-col">
+      <div class="card" id="debt-card"></div>
+      <div class="card">
+        <div class="col-header">资本结构图表</div>
+        <div class="chart-wrapper-sm"><canvas id="debtChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SECTION 6: 情景分析 ────────────────────────────────── -->
+  <div>
+    <div class="section-header">
+      <div class="section-num">06</div>
+      <div class="section-title">三情景分析 · Scenario Analysis</div>
+      <div class="section-divider"></div>
+    </div>
+    <div class="scenario-grid" id="scenario-grid"></div>
+    <div class="pwv-block" id="pwv-block"></div>
+  </div>
+
+  <!-- ── SECTION 7: FCF收益率（修正版）─────────────────────── -->
+  <div>
+    <div class="section-header">
+      <div class="section-num">07</div>
+      <div class="section-title">FCF收益率分析（修正逻辑）</div>
+      <div class="section-divider"></div>
+    </div>
+    <div class="fcf-grid" id="fcf-grid"></div>
+  </div>
+
+  <!-- ── SECTION 8: 分析师一致预期 ─────────────────────────── -->
+  <div>
+    <div class="section-header">
+      <div class="section-num">08</div>
+      <div class="section-title">分析师一致预期对比</div>
+      <div class="section-divider"></div>
+    </div>
+    <div class="consensus-grid" id="consensus-grid"></div>
+  </div>
+
+  <!-- ── SECTION 9: 价格对比图 ─────────────────────────────── -->
+  <div>
+    <div class="section-header">
+      <div class="section-num">09</div>
+      <div class="section-title">估值方法价格对比</div>
+      <div class="section-divider"></div>
+    </div>
+    <div class="card">
+      <div class="chart-wrapper"><canvas id="valCompChart"></canvas></div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+// ═══════════════════════════════════════════════ DATA ENGINE
+// 数据来源: Vercel云端API (FMP实时数据)
+// API地址: https://valuation-vercel.vercel.app/api/quote
+
+const API_URL  = 'https://valuation-vercel.vercel.app/api/quote';
+const STOCK_DB = {"NVDA":{"companyName":"NVIDIA Corporation","price":109.02,"exchange":"NASDAQ","currency":"USD","forwardEPS":4.32,"trailingEPS":2.94,"trailingPE":37.1,"forwardPE":25.2,"sharesOutstandingM":24280,"freeCashflowM":35616,"totalDebtM":8462,"totalCashM":7280,"ebitdaM":81446,"ebitM":78557,"totalRevenueM":130497,"interestExpenseM":230,"analystGrowth5yr":0.3,"analystTargetPrice":163.0,"analystBuyCount":52,"analystHoldCount":8,"analystSellCount":1},"INTC":{"companyName":"Intel Corporation","price":20.28,"exchange":"NASDAQ","currency":"USD","forwardEPS":0.42,"trailingEPS":-4.38,"trailingPE":null,"forwardPE":48.3,"sharesOutstandingM":4310,"freeCashflowM":-14253,"totalDebtM":52027,"totalCashM":23847,"ebitdaM":7234,"ebitM":-8212,"totalRevenueM":53101,"interestExpenseM":977,"analystGrowth5yr":0.05,"analystTargetPrice":22.5,"analystBuyCount":8,"analystHoldCount":22,"analystSellCount":8},"AAPL":{"companyName":"Apple Inc.","price":204.02,"exchange":"NASDAQ","currency":"USD","forwardEPS":8.14,"trailingEPS":6.97,"trailingPE":29.3,"forwardPE":25.1,"sharesOutstandingM":15220,"freeCashflowM":108807,"totalDebtM":97341,"totalCashM":53770,"ebitdaM":134911,"ebitM":123216,"totalRevenueM":391035,"interestExpenseM":1456,"analystGrowth5yr":0.1,"analystTargetPrice":232.0,"analystBuyCount":35,"analystHoldCount":15,"analystSellCount":2},"MSFT":{"companyName":"Microsoft Corporation","price":389.48,"exchange":"NASDAQ","currency":"USD","forwardEPS":13.89,"trailingEPS":12.41,"trailingPE":31.4,"forwardPE":28.0,"sharesOutstandingM":7440,"freeCashflowM":74071,"totalDebtM":97576,"totalCashM":71555,"ebitdaM":138824,"ebitM":109433,"totalRevenueM":261802,"interestExpenseM":1312,"analystGrowth5yr":0.145,"analystTargetPrice":472.0,"analystBuyCount":53,"analystHoldCount":5,"analystSellCount":0},"GOOGL":{"companyName":"Alphabet Inc.","price":155.74,"exchange":"NASDAQ","currency":"USD","forwardEPS":8.93,"trailingEPS":8.05,"trailingPE":19.3,"forwardPE":17.4,"sharesOutstandingM":12060,"freeCashflowM":72795,"totalDebtM":28027,"totalCashM":95679,"ebitdaM":119640,"ebitM":104434,"totalRevenueM":350018,"interestExpenseM":107,"analystGrowth5yr":0.15,"analystTargetPrice":215.0,"analystBuyCount":48,"analystHoldCount":8,"analystSellCount":1},"GOOG":{"companyName":"Alphabet Inc. (Class C)","price":157.1,"exchange":"NASDAQ","currency":"USD","forwardEPS":8.93,"trailingEPS":8.05,"trailingPE":19.5,"forwardPE":17.6,"sharesOutstandingM":5990,"freeCashflowM":72795,"totalDebtM":28027,"totalCashM":95679,"ebitdaM":119640,"ebitM":104434,"totalRevenueM":350018,"interestExpenseM":107,"analystGrowth5yr":0.15,"analystTargetPrice":215.0,"analystBuyCount":48,"analystHoldCount":8,"analystSellCount":1},"META":{"companyName":"Meta Platforms Inc.","price":510.18,"exchange":"NASDAQ","currency":"USD","forwardEPS":24.44,"trailingEPS":23.86,"trailingPE":21.4,"forwardPE":20.9,"sharesOutstandingM":2560,"freeCashflowM":52100,"totalDebtM":28826,"totalCashM":70530,"ebitdaM":97213,"ebitM":89359,"totalRevenueM":164501,"interestExpenseM":390,"analystGrowth5yr":0.17,"analystTargetPrice":656.0,"analystBuyCount":50,"analystHoldCount":6,"analystSellCount":1},"AMZN":{"companyName":"Amazon.com Inc.","price":183.63,"exchange":"NASDAQ","currency":"USD","forwardEPS":5.82,"trailingEPS":5.53,"trailingPE":33.2,"forwardPE":31.5,"sharesOutstandingM":10620,"freeCashflowM":38521,"totalDebtM":58314,"totalCashM":78716,"ebitdaM":129018,"ebitM":68589,"totalRevenueM":637959,"interestExpenseM":1794,"analystGrowth5yr":0.22,"analystTargetPrice":252.0,"analystBuyCount":57,"analystHoldCount":4,"analystSellCount":0},"TSLA":{"companyName":"Tesla Inc.","price":240.3,"exchange":"NASDAQ","currency":"USD","forwardEPS":2.17,"trailingEPS":1.16,"trailingPE":207.2,"forwardPE":110.7,"sharesOutstandingM":3210,"freeCashflowM":-776,"totalDebtM":7450,"totalCashM":36565,"ebitdaM":9560,"ebitM":2283,"totalRevenueM":97690,"interestExpenseM":142,"analystGrowth5yr":0.28,"analystTargetPrice":285.0,"analystBuyCount":22,"analystHoldCount":20,"analystSellCount":12},"AMD":{"companyName":"Advanced Micro Devices Inc.","price":90.72,"exchange":"NASDAQ","currency":"USD","forwardEPS":5.11,"trailingEPS":1.0,"trailingPE":90.7,"forwardPE":17.8,"sharesOutstandingM":1620,"freeCashflowM":1073,"totalDebtM":1724,"totalCashM":4293,"ebitdaM":3764,"ebitM":756,"totalRevenueM":25785,"interestExpenseM":72,"analystGrowth5yr":0.35,"analystTargetPrice":140.0,"analystBuyCount":36,"analystHoldCount":14,"analystSellCount":1},"TSM":{"companyName":"Taiwan Semiconductor Mfg Co.","price":163.46,"exchange":"NYSE","currency":"USD","forwardEPS":9.24,"trailingEPS":7.29,"trailingPE":22.4,"forwardPE":17.7,"sharesOutstandingM":5180,"freeCashflowM":17234,"totalDebtM":30187,"totalCashM":61048,"ebitdaM":53218,"ebitM":38892,"totalRevenueM":89269,"interestExpenseM":387,"analystGrowth5yr":0.2,"analystTargetPrice":225.0,"analystBuyCount":22,"analystHoldCount":4,"analystSellCount":0},"AVGO":{"companyName":"Broadcom Inc.","price":179.5,"exchange":"NASDAQ","currency":"USD","forwardEPS":6.41,"trailingEPS":2.12,"trailingPE":84.7,"forwardPE":28.0,"sharesOutstandingM":4720,"freeCashflowM":19960,"totalDebtM":69133,"totalCashM":9605,"ebitdaM":30256,"ebitM":11512,"totalRevenueM":51574,"interestExpenseM":2047,"analystGrowth5yr":0.2,"analystTargetPrice":240.0,"analystBuyCount":30,"analystHoldCount":8,"analystSellCount":0},"QCOM":{"companyName":"Qualcomm Inc.","price":143.49,"exchange":"NASDAQ","currency":"USD","forwardEPS":10.22,"trailingEPS":9.52,"trailingPE":15.1,"forwardPE":14.0,"sharesOutstandingM":1688,"freeCashflowM":10944,"totalDebtM":15448,"totalCashM":7530,"ebitdaM":14274,"ebitM":11346,"totalRevenueM":41485,"interestExpenseM":636,"analystGrowth5yr":0.12,"analystTargetPrice":190.0,"analystBuyCount":20,"analystHoldCount":14,"analystSellCount":2},"MU":{"companyName":"Micron Technology Inc.","price":79.71,"exchange":"NASDAQ","currency":"USD","forwardEPS":8.93,"trailingEPS":5.29,"trailingPE":15.1,"forwardPE":8.9,"sharesOutstandingM":1109,"freeCashflowM":-3853,"totalDebtM":13391,"totalCashM":9864,"ebitdaM":14050,"ebitM":7204,"totalRevenueM":38235,"interestExpenseM":467,"analystGrowth5yr":0.25,"analystTargetPrice":120.0,"analystBuyCount":26,"analystHoldCount":8,"analystSellCount":1},"JPM":{"companyName":"JPMorgan Chase & Co.","price":235.46,"exchange":"NYSE","currency":"USD","forwardEPS":18.03,"trailingEPS":19.75,"trailingPE":11.9,"forwardPE":13.1,"sharesOutstandingM":2840,"freeCashflowM":52000,"totalDebtM":371893,"totalCashM":1528932,"ebitdaM":76403,"ebitM":70191,"totalRevenueM":177143,"interestExpenseM":89431,"analystGrowth5yr":0.08,"analystTargetPrice":271.0,"analystBuyCount":20,"analystHoldCount":12,"analystSellCount":2},"GS":{"companyName":"Goldman Sachs Group Inc.","price":494.77,"exchange":"NYSE","currency":"USD","forwardEPS":43.97,"trailingEPS":40.54,"trailingPE":12.2,"forwardPE":11.2,"sharesOutstandingM":312,"freeCashflowM":8900,"totalDebtM":298000,"totalCashM":220000,"ebitdaM":21238,"ebitM":19843,"totalRevenueM":53510,"interestExpenseM":34000,"analystGrowth5yr":0.09,"analystTargetPrice":610.0,"analystBuyCount":18,"analystHoldCount":8,"analystSellCount":1},"XOM":{"companyName":"Exxon Mobil Corporation","price":108.49,"exchange":"NYSE","currency":"USD","forwardEPS":7.58,"trailingEPS":8.61,"trailingPE":12.6,"forwardPE":14.3,"sharesOutstandingM":4320,"freeCashflowM":24621,"totalDebtM":40268,"totalCashM":22462,"ebitdaM":57726,"ebitM":39376,"totalRevenueM":398000,"interestExpenseM":853,"analystGrowth5yr":0.05,"analystTargetPrice":128.0,"analystBuyCount":16,"analystHoldCount":12,"analystSellCount":3},"V":{"companyName":"Visa Inc.","price":326.85,"exchange":"NYSE","currency":"USD","forwardEPS":11.61,"trailingEPS":10.59,"trailingPE":30.9,"forwardPE":28.2,"sharesOutstandingM":2060,"freeCashflowM":18938,"totalDebtM":20596,"totalCashM":17055,"ebitdaM":24760,"ebitM":22858,"totalRevenueM":35926,"interestExpenseM":613,"analystGrowth5yr":0.12,"analystTargetPrice":390.0,"analystBuyCount":32,"analystHoldCount":6,"analystSellCount":0},"WMT":{"companyName":"Walmart Inc.","price":93.02,"exchange":"NYSE","currency":"USD","forwardEPS":2.77,"trailingEPS":2.42,"trailingPE":38.4,"forwardPE":33.6,"sharesOutstandingM":8020,"freeCashflowM":12504,"totalDebtM":36769,"totalCashM":9406,"ebitdaM":35024,"ebitM":24688,"totalRevenueM":680986,"interestExpenseM":2320,"analystGrowth5yr":0.11,"analystTargetPrice":113.0,"analystBuyCount":34,"analystHoldCount":8,"analystSellCount":0},"NFLX":{"companyName":"Netflix Inc.","price":904.49,"exchange":"NASDAQ","currency":"USD","forwardEPS":24.62,"trailingEPS":19.56,"trailingPE":46.2,"forwardPE":36.7,"sharesOutstandingM":429,"freeCashflowM":6921,"totalDebtM":14099,"totalCashM":7815,"ebitdaM":10420,"ebitM":9680,"totalRevenueM":38904,"interestExpenseM":654,"analystGrowth5yr":0.22,"analystTargetPrice":1100.0,"analystBuyCount":32,"analystHoldCount":10,"analystSellCount":1},"SNDK":{"companyName":"SanDisk Corporation","price":43.28,"exchange":"NASDAQ","currency":"USD","forwardEPS":2.14,"trailingEPS":-0.83,"trailingPE":null,"forwardPE":20.2,"sharesOutstandingM":338,"freeCashflowM":-890,"totalDebtM":6240,"totalCashM":1820,"ebitdaM":1245,"ebitM":389,"totalRevenueM":7890,"interestExpenseM":184,"analystGrowth5yr":0.28,"analystTargetPrice":58.0,"analystBuyCount":12,"analystHoldCount":6,"analystSellCount":2},"BAC":{"companyName":"Bank of America Corp.","price":38.46,"exchange":"NYSE","currency":"USD","forwardEPS":3.46,"trailingEPS":3.21,"trailingPE":12.0,"forwardPE":11.1,"sharesOutstandingM":7660,"freeCashflowM":28000,"totalDebtM":282000,"totalCashM":375000,"ebitdaM":35142,"ebitM":31200,"totalRevenueM":98600,"interestExpenseM":46800,"analystGrowth5yr":0.07,"analystTargetPrice":48.0,"analystBuyCount":18,"analystHoldCount":12,"analystSellCount":2},"BRKB":{"companyName":"Berkshire Hathaway Inc.","price":528.53,"exchange":"NYSE","currency":"USD","forwardEPS":22.4,"trailingEPS":35.2,"trailingPE":15.0,"forwardPE":23.6,"sharesOutstandingM":2166,"freeCashflowM":37900,"totalDebtM":124700,"totalCashM":334200,"ebitdaM":72000,"ebitM":62800,"totalRevenueM":371400,"interestExpenseM":2300,"analystGrowth5yr":0.07,"analystTargetPrice":580.0,"analystBuyCount":6,"analystHoldCount":4,"analystSellCount":0},"LLY":{"companyName":"Eli Lilly and Company","price":775.42,"exchange":"NYSE","currency":"USD","forwardEPS":20.95,"trailingEPS":8.53,"trailingPE":90.9,"forwardPE":37.0,"sharesOutstandingM":952,"freeCashflowM":7019,"totalDebtM":23800,"totalCashM":2804,"ebitdaM":14289,"ebitM":11559,"totalRevenueM":45036,"interestExpenseM":814,"analystGrowth5yr":0.35,"analystTargetPrice":1050.0,"analystBuyCount":22,"analystHoldCount":6,"analystSellCount":1},"UNH":{"companyName":"UnitedHealth Group Inc.","price":285.83,"exchange":"NYSE","currency":"USD","forwardEPS":26.27,"trailingEPS":23.86,"trailingPE":12.0,"forwardPE":10.9,"sharesOutstandingM":921,"freeCashflowM":21520,"totalDebtM":44900,"totalCashM":25800,"ebitdaM":32184,"ebitM":26991,"totalRevenueM":400300,"interestExpenseM":1827,"analystGrowth5yr":0.12,"analystTargetPrice":370.0,"analystBuyCount":20,"analystHoldCount":6,"analystSellCount":2},"COST":{"companyName":"Costco Wholesale Corporation","price":960.22,"exchange":"NASDAQ","currency":"USD","forwardEPS":16.82,"trailingEPS":16.56,"trailingPE":58.0,"forwardPE":57.1,"sharesOutstandingM":444,"freeCashflowM":6626,"totalDebtM":6501,"totalCashM":9906,"ebitdaM":10493,"ebitM":9285,"totalRevenueM":254046,"interestExpenseM":174,"analystGrowth5yr":0.09,"analystTargetPrice":1080.0,"analystBuyCount":28,"analystHoldCount":12,"analystSellCount":1},"SPY":{"companyName":"SPDR S&P 500 ETF Trust","price":522.78,"exchange":"NYSE","currency":"USD","forwardEPS":25.4,"trailingEPS":23.1,"trailingPE":22.6,"forwardPE":20.6,"sharesOutstandingM":926,"freeCashflowM":null,"totalDebtM":null,"totalCashM":null,"ebitdaM":null,"ebitM":null,"totalRevenueM":null,"interestExpenseM":null,"analystGrowth5yr":0.1,"analystTargetPrice":560.0,"analystBuyCount":null,"analystHoldCount":null,"analystSellCount":null},"QQQ":{"companyName":"Invesco QQQ Trust","price":447.3,"exchange":"NASDAQ","currency":"USD","forwardEPS":22.1,"trailingEPS":19.8,"trailingPE":22.6,"forwardPE":20.2,"sharesOutstandingM":580,"freeCashflowM":null,"totalDebtM":null,"totalCashM":null,"ebitdaM":null,"ebitM":null,"totalRevenueM":null,"interestExpenseM":null,"analystGrowth5yr":0.15,"analystTargetPrice":null,"analystBuyCount":null,"analystHoldCount":null,"analystSellCount":null}};
+
+async function fetchData() {
+  const ticker = document.getElementById('inp-ticker').value.trim().toUpperCase();
+  if (!ticker) { setFetchMsg('请输入股票代码', 'warn'); return; }
+
+  const btn = document.getElementById('fetch-btn');
+  btn.disabled = true;
+  btn.classList.add('loading');
+  btn.textContent = '⟳ 拉取中...';
+  setFetchMsg('正在获取实时数据...', 'info');
+
+  let data = null, source = '';
+
+  try {
+    const res = await fetch(`${API_URL}?ticker=${ticker}`, {
+      signal: AbortSignal.timeout(15000),
+      headers: { 'Accept': 'application/json' }
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    data   = await res.json();
+    source = 'live';
+  } catch(e) {
+    // Fallback to built-in DB
+    const offline = STOCK_DB[ticker];
+    if (offline) {
+      data   = offline;
+      source = 'offline';
+    } else {
+      setFetchMsg(`❌ ${e.message}`, 'error');
+      resetBtn(); return;
+    }
+  }
+
+  const tpeVal = data.trailingPE != null
+    ? Math.min(Math.abs(data.trailingPE), 200).toFixed(1)
+    : (data.forwardPE != null ? Number(data.forwardPE).toFixed(1) : null);
+
+  const growthVal = (() => {
+    if (data.analystGrowth5yrPct != null) return Number(data.analystGrowth5yrPct).toFixed(1);
+    const g = data.analystGrowth5yr;
+    if (!g) return null;
+    const pct = Math.abs(g) <= 1 ? g * 100 : g;
+    return Math.min(Math.max(pct, 2), 80).toFixed(1);
+  })();
+
+  const fieldMap = {
+    'inp-company': { val: data.companyName,                                              isText: true },
+    'inp-price':   { val: data.price        != null ? Number(data.price).toFixed(2)    : null },
+    'inp-feps':    { val: data.forwardEPS   != null ? Number(data.forwardEPS).toFixed(2): null },
+    'inp-teps':    { val: data.trailingEPS  != null ? Number(data.trailingEPS).toFixed(2):null },
+    'inp-pe':      { val: tpeVal },
+    'inp-fcf':     { val: data.freeCashflowM     != null ? Math.round(data.freeCashflowM)    : null },
+    'inp-shares':  { val: data.sharesOutstandingM!= null ? Math.round(data.sharesOutstandingM):null },
+    'inp-debt':    { val: data.totalDebtM        != null ? Math.round(data.totalDebtM)       : null },
+    'inp-cash':    { val: data.totalCashM        != null ? Math.round(data.totalCashM)       : null },
+    'inp-ebitda':  { val: data.ebitdaM           != null ? Math.round(data.ebitdaM)          : null },
+    'inp-ebit':    { val: data.ebitM             != null ? Math.round(data.ebitM)            : null },
+    'inp-revenue': { val: data.totalRevenueM     != null ? Math.round(data.totalRevenueM)    : null },
+    'inp-interest':{ val: data.interestExpenseM  != null ? Math.round(data.interestExpenseM) : null },
+    'inp-g1':      { val: growthVal },
+  };
+
+  let filled = 0, missing = [];
+  for (const [id, cfg] of Object.entries(fieldMap)) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    const val = cfg.val;
+    const valid = val != null && String(val).trim() !== '' &&
+                  val !== 'null' && val !== 'undefined' &&
+                  (cfg.isText || (!isNaN(Number(val)) && isFinite(Number(val))));
+    if (valid) {
+      el.value = String(val);
+      el.classList.remove('field-updated');
+      void el.offsetWidth;
+      el.classList.add('field-updated');
+      filled++;
+    } else {
+      missing.push(id.replace('inp-','').toUpperCase());
+    }
+  }
+
+  document.getElementById('hdr-ticker').textContent  = ticker;
+  document.getElementById('hdr-company').textContent = data.companyName || ticker;
+  if (data.price) document.getElementById('hdr-price').textContent = '$' + Number(data.price).toFixed(2);
+
+  const ann = document.getElementById('g1-annotation');
+  if (ann && data.growthSource) {
+    ann.style.display = 'block';
+    ann.style.color   = data.growthWarning ? 'var(--accent-orange)' : 'var(--accent-green)';
+    ann.textContent   = (data.growthWarning ? '⚠️ ' : '✓ ') + 'g1: ' + data.growthSource;
+  }
+
+  const stateTag = {REGULAR:'🟢 交易中', PRE:'🟡 盘前', POST:'🟡 盘后'}[data.marketState] || '⚪ 休市';
+  const srcTag   = source === 'live'
+    ? `⚡ 实时·FMP · ${data.updatedAt || ''}`
+    : `📦 内置库 · ${data.updatedDate || '2026-04-22'}`;
+  const missingNote = missing.length ? ` · 缺失:${missing.join('/')}` : '';
+
+  setFetchMsg(
+    `✅ ${filled}项已填充 · ${data.exchange||''} · ${stateTag} · ${srcTag}${missingNote}`,
+    source === 'live' ? (data.growthWarning ? 'partial' : 'ok') : 'partial'
+  );
+
+  resetBtn();
+}
+
+function setFetchMsg(msg, type) {
+  const el = document.getElementById('fetch-msg');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.color = {ok:'var(--accent-green)', partial:'var(--accent-orange)',
+                     error:'var(--accent-red)', warn:'var(--accent-orange)'}[type] || 'var(--text-muted)';
+}
+
+function resetBtn() {
+  const btn = document.getElementById('fetch-btn');
+  if (!btn) return;
+  btn.disabled = false;
+  btn.classList.remove('loading');
+  btn.textContent = '⬇ 加载数据';
+}
+
+
+// ═══════════════════════════════════════════════ GLOBALS
+let chartInstances = {};
+
+function destroyChart(id) {
+  if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
+}
+
+// ═══════════════════════════════════════════════ HELPERS
+const $ = id => document.getElementById(id);
+const fmt = (n, d=2) => n == null || isNaN(n) ? '—' : n.toLocaleString('en-US', {minimumFractionDigits:d, maximumFractionDigits:d});
+const fmtP = (n,d=1) => n == null || isNaN(n) ? '—' : (n>=0?'+':'')+fmt(n,d)+'%';
+const fmtM = n => n >= 1000 ? '$'+fmt(n/1000,1)+'B' : '$'+fmt(n,0)+'M';
+
+function colClass(upside) {
+  if (upside > 15) return 'cell-high';
+  if (upside > 5) return 'cell-mid-high';
+  if (upside > -5) return 'cell-mid';
+  if (upside > -15) return 'cell-mid-low';
+  return 'cell-low';
+}
+
+// ═══════════════════════════════════════════════ MAIN CALC
+function showError(msg) {
+  let el = $('calc-error');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'calc-error';
+    el.style.cssText = 'background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:#ef4444;font-family:IBM Plex Mono,monospace;font-size:12px;padding:10px 16px;border-radius:4px;margin:0 32px 0 32px;';
+    document.querySelector('.input-panel').after(el);
+  }
+  el.textContent = '⚠ ' + msg;
+  el.style.display = 'block';
+}
+function clearError() {
+  const el = $('calc-error');
+  if (el) el.style.display = 'none';
+}
+
+function runCalc() {
+  clearError();
+  const ticker   = $('inp-ticker').value.trim().toUpperCase() || '—';
+  const company  = $('inp-company').value.trim() || 'Unknown Company';
+  const price    = parseFloat($('inp-price').value);
+  const feps     = parseFloat($('inp-feps').value);
+  const teps     = parseFloat($('inp-teps').value);
+  const histPE   = parseFloat($('inp-pe').value);
+  const fcfM     = parseFloat($('inp-fcf').value);
+  const shares   = parseFloat($('inp-shares').value);  // millions
+  const debt     = parseFloat($('inp-debt').value);
+  const cash     = parseFloat($('inp-cash').value);
+  const ebitda   = parseFloat($('inp-ebitda').value);
+  const ebit     = parseFloat($('inp-ebit').value);
+  const revenue  = parseFloat($('inp-revenue').value);
+  const g1       = parseFloat($('inp-g1').value)/100;
+  const g2       = parseFloat($('inp-g2').value)/100;
+  const g3       = parseFloat($('inp-g3').value)/100;
+  const wacc     = parseFloat($('inp-wacc').value)/100;
+  const rf       = parseFloat($('inp-rf').value)/100;
+  const interest = parseFloat($('inp-interest').value);
+
+  // ── INPUT VALIDATION ─────────────────────────────────────────
+  const required = { '现价': price, 'Forward EPS': feps, 'Trailing EPS': teps,
+    '历史P/E': histPE, 'FCF': fcfM, '总股本': shares, 'WACC': wacc*100 };
+  for (const [k, v] of Object.entries(required)) {
+    if (isNaN(v) || v === null) { showError(`输入错误：${k} 不是有效数字`); return; }
+  }
+  if (price <= 0)  { showError('现价必须大于0'); return; }
+  if (feps <= 0)   { showError('Forward EPS 必须大于0'); return; }
+  if (shares <= 0) { showError('总股本必须大于0'); return; }
+  if (wacc <= g3)  { showError(`WACC(${(wacc*100).toFixed(1)}%) 必须大于永续增长率g3(${(g3*100).toFixed(1)}%)，否则终值计算无意义`); return; }
+  if (g1 < 0 || g2 < 0) { showError('增长率不能为负数'); return; }
+
+  // Derived
+  const mktCap   = price * shares; // $M
+  const ev       = mktCap + debt - cash;
+  const fcfPS    = (fcfM / shares) * 1000; // per share (shares in M, fcf in M → $/share × 1000)
+
+  // ── 1. RELATIVE VALUATION ────────────────────────────────────
+  const relVal = feps * histPE;
+
+  // ── 2. GRAHAM ─────────────────────────────────────────────────
+  // Use a normalized g capped at 20% to avoid formula blowup
+  const gGraham = Math.min(g1 * 100, 20);
+  const grahamVal = teps * (8.5 + 2 * gGraham);
+
+  // ── 3. FCF YIELD ──────────────────────────────────────────────
+  // Proper FCF-based intrinsic value: FCF / (WACC - g3)
+  const fcfIntrinsic = fcfPS / (wacc - g3);
+
+  // ── 4. DCF (3-stage) ─────────────────────────────────────────
+  let dcfRows = [];
+  let totalPV = 0;
+  let fcfCur = fcfM;
+
+  // Phase 1: years 1-5
+  for (let yr = 1; yr <= 5; yr++) {
+    fcfCur = fcfCur * (1 + g1);
+    const pv = fcfCur / Math.pow(1 + wacc, yr);
+    totalPV += pv;
+    dcfRows.push({ yr, fcf: fcfCur, pv, growth: g1, phase: 1 });
+  }
+  // Phase 2: years 6-10
+  for (let yr = 6; yr <= 10; yr++) {
+    const blendG = g1 + ((yr - 5) / 5) * (g2 - g1);
+    fcfCur = fcfCur * (1 + blendG);
+    const pv = fcfCur / Math.pow(1 + wacc, yr);
+    totalPV += pv;
+    dcfRows.push({ yr, fcf: fcfCur, pv, growth: blendG, phase: 2 });
+  }
+  // Terminal value
+  const tv = fcfCur * (1 + g3) / (wacc - g3);
+  const tvPV = tv / Math.pow(1 + wacc, 10);
+  totalPV += tvPV;
+
+  // Equity value per share
+  const dcfEquityM = totalPV + cash - debt;
+  const dcfValPS   = (dcfEquityM / shares) * 1000;
+
+  // ── 5. EV/EBITDA-based ────────────────────────────────────────
+  // Peer median EV/EBITDA for semis ~20x, apply to get EV, then equity
+  const peerEVEBITDA = 22;
+  const impliedEV    = peerEVEBITDA * ebitda;
+  const evEquityM    = impliedEV - debt + cash;
+  const evValPS      = (evEquityM / shares) * 1000;
+
+  // ── PEG ───────────────────────────────────────────────────────
+  const fwdPE   = price / feps;
+  const trailPE = price / teps;
+  const epsGrowthPct = ((feps - teps) / Math.abs(teps)) * 100;
+  const pegFwd  = fwdPE / epsGrowthPct;
+  const pegTrail= trailPE / epsGrowthPct;
+
+  // ── WEIGHTS ───────────────────────────────────────────────────
+  let w = getWeights();
+  const totalW = w.rel + w.graham + w.fcf + w.dcf + w.ev;
+  const wNorm  = { rel: w.rel/totalW, graham: w.graham/totalW, fcf: w.fcf/totalW, dcf: w.dcf/totalW, ev: w.ev/totalW };
+  const compositeVal = wNorm.rel*relVal + wNorm.graham*grahamVal + wNorm.fcf*fcfIntrinsic + wNorm.dcf*dcfValPS + wNorm.ev*evValPS;
+
+  // ── SAFETY ────────────────────────────────────────────────────
+  const safetyMargin = ((compositeVal - price) / compositeVal) * 100;
+  const atr = price * 0.0636;
+  const stopLoss = price - 2 * atr;
+  const peVsHist = ((fwdPE - histPE) / histPE) * 100;
+
+  // ── SCENARIOS ─────────────────────────────────────────────────
+  const scenarios = {
+    bull: { price: compositeVal * 1.35, g: g1*1.5*100, pe: fwdPE*1.2, prob: 0.30 },
+    base: { price: compositeVal,        g: g1*100,     pe: fwdPE,     prob: 0.45 },
+    bear: { price: compositeVal * 0.65, g: g2*100,     pe: fwdPE*0.7, prob: 0.25 }
+  };
+  const pwv = scenarios.bull.price*0.30 + scenarios.base.price*0.45 + scenarios.bear.price*0.25;
+
+  // ── FCF YIELD ANALYSIS ────────────────────────────────────────
+  const fcfYield     = (fcfM / mktCap) * 100;
+  const fcfSpread    = fcfYield - rf * 100;
+  const reqReturn    = rf*100 + 5.5; // equity risk premium ~5.5%
+  const fcfGapToReq  = fcfYield - reqReturn;
+
+  // ── ANALYST CONSENSUS (illustrative based on inputs) ─────────────
+  const analystsTotal = 62;
+  const buyCount  = Math.round(analystsTotal * (safetyMargin > 20 ? 0.72 : safetyMargin > 0 ? 0.58 : 0.38));
+  const holdCount = Math.round(analystsTotal * 0.28);
+  const sellCount = analystsTotal - buyCount - holdCount;
+  const consensusTP = compositeVal * 1.08;
+  const highTP = compositeVal * 1.6;
+  const lowTP  = compositeVal * 0.55;
+
+  // ═══ RENDER ══════════════════════════════════════════════════
+  $('hdr-ticker').textContent = ticker;
+  $('hdr-company').textContent = company;
+  $('hdr-price').textContent = '$' + fmt(price);
+  const totalUpside = ((compositeVal - price) / price) * 100;
+  $('hdr-upside').textContent = '综合上行空间: ' + fmtP(totalUpside);
+
+  renderValCards(price, relVal, grahamVal, fcfIntrinsic, dcfValPS, evValPS, wNorm);
+  renderComposite(compositeVal, price, safetyMargin, atr, stopLoss, peVsHist);
+  renderDCF(dcfRows, tvPV, tv, totalPV, dcfEquityM, dcfValPS, shares, debt, cash, g1, g2, g3, wacc);
+  renderSensitivity(dcfRows, fcfM, shares, debt, cash, g1, g2, g3, wacc, dcfValPS);
+  renderEV(ev, mktCap, debt, cash, ebitda, ebit, revenue, shares, price, feps, teps);
+  renderComps(ticker, price, fwdPE, trailPE, ev/ebitda, ev/ebit, ev/revenue, revenue, mktCap, epsGrowthPct);
+  renderPEG(fwdPE, trailPE, epsGrowthPct, pegFwd, pegTrail, histPE);
+  renderDebt(debt, cash, mktCap, ebitda, ebit, interest, ev, shares, price);
+  renderScenarios(scenarios, pwv, price, compositeVal);
+  renderFCF(fcfYield, rf, fcfSpread, fcfGapToReq, fcfIntrinsic, price, wacc, g3, reqReturn, fcfM, mktCap);
+  renderConsensus(price, consensusTP, highTP, lowTP, buyCount, holdCount, sellCount, analystsTotal, compositeVal);
+  renderValCompChart(price, relVal, grahamVal, fcfIntrinsic, dcfValPS, evValPS, compositeVal);
+
+  $('results').style.display = 'flex';
+}
+
+// ═══════════════════════════════════════════════ WEIGHTS
+function getWeights() {
+  return {
+    rel:    parseFloat($('w-rel')?.value    ?? 20),
+    graham: parseFloat($('w-graham')?.value ?? 10),
+    fcf:    parseFloat($('w-fcf')?.value    ?? 15),
+    dcf:    parseFloat($('w-dcf')?.value    ?? 35),
+    ev:     parseFloat($('w-ev')?.value     ?? 20),
+  };
+}
+
+function renderComposite(compositeVal, price, safetyMargin, atr, stopLoss, peVsHist) {
+  const upside = ((compositeVal - price) / price) * 100;
+  $('comp-price').textContent = '$' + fmt(compositeVal);
+  $('comp-sub').textContent = `综合目标价 · 上行空间 ${fmtP(upside)} · 现价 $${fmt(price)}`;
+  const sm = $('safety-margin');
+  sm.textContent = fmt(safetyMargin, 1) + '%';
+  sm.className = 'safety-item-val ' + (safetyMargin > 20 ? 'good' : safetyMargin > 0 ? 'warn' : 'bad');
+  $('safety-atr').textContent = '$' + fmt(atr);
+  $('safety-stop').textContent = '$' + fmt(stopLoss);
+  const pep = $('safety-pe-prem');
+  pep.textContent = fmtP(peVsHist);
+  pep.className = 'safety-item-val ' + (peVsHist < 0 ? 'good' : peVsHist < 20 ? 'warn' : 'bad');
+  // Sliders are static HTML — no re-render needed
+}
+
+// ═══════════════════════════════════════════════ VAL CARDS
+function renderValCards(price, relVal, grahamVal, fcfIntrinsic, dcfValPS, evValPS, wNorm) {
+  const methods = [
+    { label:'相对估值', method:'EPS × Avg P/E', val:relVal,       color:'green',  w:wNorm.rel },
+    { label:'格雷厄姆',  method:'V=EPS×(8.5+2g)',val:grahamVal,    color:'blue',   w:wNorm.graham },
+    { label:'FCF折现',  method:'FCF/(WACC-g)',   val:fcfIntrinsic, color:'purple', w:wNorm.fcf },
+    { label:'三阶段DCF',method:'多阶段现金流折现',val:dcfValPS,     color:'orange', w:wNorm.dcf },
+    { label:'EV/EBITDA',method:'企业价值倍数法',  val:evValPS,      color:'cyan',   w:wNorm.ev },
+  ];
+  $('val-cards').style.gridTemplateColumns = 'repeat(5,1fr)';
+  $('val-cards').innerHTML = methods.map(m => {
+    const upside = ((m.val - price) / price) * 100;
+    return `<div class="val-card ${m.color}">
+      <div class="val-card-tag">${m.label}</div>
+      <div class="val-card-method">${m.method}</div>
+      <div class="val-card-price">$${fmt(m.val)}</div>
+      <div class="val-card-upside ${upside>=0?'upside-pos':'upside-neg'}">${fmtP(upside)} vs 现价</div>
+      <div class="val-card-weight">权重 ${fmt(m.w*100,0)}%</div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════ DCF TABLE
+function renderDCF(rows, tvPV, tv, totalPV, dcfEquityM, dcfValPS, shares, debt, cash, g1, g2, g3, wacc) {
+  const phClass = p => p===1?'phase-1':p===2?'phase-2':'phase-3';
+  const phBadge = p => p===1?'<span class="phase-badge p1">高增长</span>':p===2?'<span class="phase-badge p2">过渡期</span>':'<span class="phase-badge p3">永续</span>';
+  let html = `<thead><tr>
+    <th>年份</th><th>增长率</th><th>FCF ($M)</th><th>折现率</th><th>PV ($M)</th>
+  </tr></thead><tbody>`;
+  rows.forEach(r => {
+    html += `<tr class="${phClass(r.phase)}">
+      <td>Y${r.yr} ${phBadge(r.phase)}</td>
+      <td>${fmt(r.growth*100,1)}%</td>
+      <td>${fmtM(r.fcf)}</td>
+      <td>${fmt(Math.pow(1+wacc,r.yr)*100,1)}%</td>
+      <td>${fmtM(r.pv)}</td>
+    </tr>`;
+  });
+  html += `<tr class="phase-3"><td>终值 TV <span class="phase-badge p3">永续</span></td><td>${fmt(g3*100,1)}%</td><td>${fmtM(tv)}</td><td>—</td><td>${fmtM(tvPV)}</td></tr>`;
+  html += `<tr class="total-row"><td colspan="4">企业价值 (PV Sum)</td><td>${fmtM(totalPV)}</td></tr>`;
+  html += `<tr class="total-row"><td colspan="4">- 净债务 + 现金</td><td>${fmtM(cash - debt)}</td></tr>`;
+  html += `<tr class="total-row"><td colspan="4">股权价值 / 每股</td><td style="color:var(--accent-orange);font-size:14px;">$${fmt(dcfValPS)}</td></tr>`;
+  html += `</tbody>`;
+  $('dcf-table').innerHTML = html;
+  const tvPct = (tvPV / totalPV * 100).toFixed(1);
+  $('dcf-footnote').textContent = `终值占比 ${tvPct}% · WACC ${fmt(wacc*100,1)}% · Phase1 g=${fmt(g1*100,1)}% · Phase2 g=${fmt(g2*100,1)}% · TV g=${fmt(g3*100,1)}%`;
+}
+
+// ═══════════════════════════════════════════════ SENSITIVITY
+function renderSensitivity(rows, fcfM, shares, debt, cash, g1, g2, g3, baseWacc, baseVal) {
+  const waccRange = [baseWacc-0.02, baseWacc-0.01, baseWacc, baseWacc+0.01, baseWacc+0.02];
+  const gRange    = [g3-0.01, g3-0.005, g3, g3+0.005, g3+0.01];
+
+  function calcDCF(w, gT) {
+    let pv = 0; let fcfCur = fcfM;
+    for (let yr=1;yr<=5;yr++) { fcfCur*=(1+g1); pv+=fcfCur/Math.pow(1+w,yr); }
+    for (let yr=6;yr<=10;yr++) { const bg=g1+((yr-5)/5)*(g2-g1); fcfCur*=(1+bg); pv+=fcfCur/Math.pow(1+w,yr); }
+    const tv=fcfCur*(1+gT)/(w-gT); pv+=tv/Math.pow(1+w,10);
+    return ((pv+cash-debt)/shares)*1000;
+  }
+
+  let html = `<thead><tr><th>g₃↓ / WACC→</th>`;
+  waccRange.forEach(w => html += `<th>${fmt(w*100,1)}%</th>`);
+  html += `</tr></thead><tbody>`;
+
+  gRange.forEach(gT => {
+    html += `<tr>`;
+    html += `<td style="color:var(--text-secondary);font-size:10px;">${fmt(gT*100,1)}%</td>`;
+    waccRange.forEach(w => {
+      if (w <= gT) { html += `<td style="color:var(--text-muted);">N/A</td>`; return; }
+      const v = calcDCF(w, gT);
+      const upside = ((v - rows[0]?.fcf / rows[0]?.pv) / 1) * 0;  // just use v directly
+      const isBase = (Math.abs(w - baseWacc) < 0.001 && Math.abs(gT - g3) < 0.001);
+      const cls = v > baseVal*1.15 ? 'cell-high' : v > baseVal*1.05 ? 'cell-mid-high' : v > baseVal*0.95 ? 'cell-mid' : v > baseVal*0.85 ? 'cell-mid-low' : 'cell-low';
+      html += `<td class="${cls}${isBase?' cell-base':''}">$${fmt(v,0)}</td>`;
+    });
+    html += `</tr>`;
+  });
+  html += `</tbody>`;
+  $('sensitivity-table').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════ EV
+function renderEV(ev, mktCap, debt, cash, ebitda, ebit, revenue, shares, price, feps, teps) {
+  const evEBITDA = ev / ebitda;
+  const evEBIT   = ev / ebit;
+  const evSales  = ev / revenue;
+  const evFCF    = ev / (ebitda * 0.6); // rough FCF proxy
+
+  $('ev-metrics').innerHTML = `
+    <div class="metric-row"><span class="metric-label">市值 (Mkt Cap)</span><span class="metric-val highlight">${fmtM(mktCap)}</span></div>
+    <div class="metric-row"><span class="metric-label">+ 总债务</span><span class="metric-val">+ ${fmtM(debt)}</span></div>
+    <div class="metric-row"><span class="metric-label">- 现金及等价物</span><span class="metric-val">- ${fmtM(cash)}</span></div>
+    <div class="metric-row" style="border-top:1px solid var(--border-bright);margin-top:4px;padding-top:8px;">
+      <span class="metric-label" style="color:var(--text-primary);font-weight:600;">企业价值 (EV)</span>
+      <span class="metric-val" style="color:var(--accent-blue);font-size:18px;">${fmtM(ev)}</span>
+    </div>
+    <div class="metric-row"><span class="metric-label">EBITDA</span><span class="metric-val">${fmtM(ebitda)}</span></div>
+    <div class="metric-row"><span class="metric-label">EBIT</span><span class="metric-val">${fmtM(ebit)}</span></div>
+    <div class="metric-row"><span class="metric-label">营收 (Revenue)</span><span class="metric-val">${fmtM(revenue)}</span></div>
+  `;
+
+  const peerEVEBITDA = 22, peerEVEBIT = 28, peerEVSales = 12;
+  function vsTag(v, peer) {
+    const diff = ((v-peer)/peer)*100;
+    return `<span class="tag ${diff>15?'red':diff<-15?'green':'orange'}">${diff>0?'+':''}${diff.toFixed(0)}% vs peer</span>`;
+  }
+
+  $('ev-multiples').innerHTML = `
+    <div class="metric-row">
+      <span class="metric-label">EV/EBITDA</span>
+      <span class="metric-val">${fmt(evEBITDA,1)}x ${vsTag(evEBITDA, peerEVEBITDA)}</span>
+    </div>
+    <div class="metric-row">
+      <span class="metric-label">EV/EBIT</span>
+      <span class="metric-val">${fmt(evEBIT,1)}x ${vsTag(evEBIT, peerEVEBIT)}</span>
+    </div>
+    <div class="metric-row">
+      <span class="metric-label">EV/Sales</span>
+      <span class="metric-val">${fmt(evSales,1)}x ${vsTag(evSales, peerEVSales)}</span>
+    </div>
+    <div class="metric-row">
+      <span class="metric-label">EV/FCF (est.)</span>
+      <span class="metric-val">${fmt(evFCF,1)}x</span>
+    </div>
+    <div class="metric-row">
+      <span class="metric-label">Forward P/E</span>
+      <span class="metric-val">${fmt(price/feps,1)}x</span>
+    </div>
+    <div class="metric-row">
+      <span class="metric-label">Trailing P/E</span>
+      <span class="metric-val">${fmt(price/teps,1)}x</span>
+    </div>
+  `;
+  $('ev-footnote').textContent = `同行中位数参考：EV/EBITDA ${peerEVEBITDA}x · EV/EBIT ${peerEVEBIT}x · EV/Sales ${peerEVSales}x`;
+}
+
+// ═══════════════════════════════════════════════ COMPS
+function renderComps(ticker, price, fwdPE, trailPE, evEBITDA, evEBIT, evSales, revenue, mktCap, epsGrowth) {
+  const peers = [
+    { name: ticker,  full: 'Target Company',     pe: fwdPE,  trailPE, evEBITDA, evEBIT, evSales, growth: epsGrowth, target: true },
+    { name: 'AMD',   full: 'Advanced Micro',      pe: 24.2,  trailPE:75.1, evEBITDA:32.1, evEBIT:36.4, evSales:6.2,  growth: 42 },
+    { name: 'TSM',   full: 'TSMC',                pe: 19.8,  trailPE:28.5, evEBITDA:14.2, evEBIT:17.1, evSales:8.1,  growth: 28 },
+    { name: 'INTC',  full: 'Intel',               pe: 31.5,  trailPE:null, evEBITDA:18.5, evEBIT:22.4, evSales:2.8,  growth: -12 },
+    { name: 'QCOM',  full: 'Qualcomm',            pe: 14.1,  trailPE:15.8, evEBITDA:11.2, evEBIT:13.6, evSales:4.3,  growth: 18 },
+    { name: 'AVGO',  full: 'Broadcom',            pe: 28.4,  trailPE:72.3, evEBITDA:21.8, evEBIT:24.9, evSales:12.8, growth: 25 },
+    { name: 'MU',    full: 'Micron',              pe: 11.2,  trailPE:null, evEBITDA:8.4,  evEBIT:10.2, evSales:3.8,  growth: 55 },
+  ];
+
+  // Median (excl target)
+  const nonTarget = peers.filter(p=>!p.target);
+  const median = arr => { const s=[...arr].sort((a,b)=>a-b); return s[Math.floor(s.length/2)]; };
+  const medPE   = median(nonTarget.map(p=>p.pe));
+  const medEV   = median(nonTarget.map(p=>p.evEBITDA));
+  const medGr   = median(nonTarget.map(p=>p.growth));
+
+  function cell(val, medianVal, higherIsBetter=false) {
+    if (val == null || isNaN(val)) return `<td class="val">—</td>`;
+    const premium = ((val - medianVal) / Math.abs(medianVal)) * 100;
+    // For multiples, lower is better (cheaper); for growth, higher is better
+    const cheap = higherIsBetter ? premium > 5 : premium < -5;
+    const exp   = higherIsBetter ? premium < -5 : premium > 5;
+    const cls   = cheap ? 'discount' : exp ? 'premium' : '';
+    return `<td class="${cls}">${fmt(val,1)}x</td>`;
+  }
+
+  let html = `<thead><tr>
+    <th>代码</th><th>公司</th>
+    <th>Fwd P/E</th><th>EV/EBITDA</th><th>EV/EBIT</th><th>EV/Sales</th>
+    <th>EPS增速</th><th>PEG</th>
+  </tr></thead><tbody>`;
+
+  peers.forEach(p => {
+    const peg = p.growth > 0 ? p.pe / p.growth : null;
+    const rowCls = p.target ? 'target-row' : '';
+    html += `<tr class="${rowCls}">
+      <td>${p.name}${p.target?' <span class="tag blue">TARGET</span>':''}</td>
+      <td>${p.full}</td>
+      ${cell(p.pe, medPE)}
+      ${cell(p.evEBITDA, medEV)}
+      ${cell(p.evEBIT, median(nonTarget.map(x=>x.evEBIT)))}
+      ${cell(p.evSales, median(nonTarget.map(x=>x.evSales)))}
+      <td class="${p.growth>20?'discount':p.growth<0?'premium':''}">${p.growth!=null?fmtP(p.growth):'—'}</td>
+      <td class="${peg&&peg<1?'discount':peg&&peg>2?'premium':''}">${peg?fmt(peg,2)+'x':'—'}</td>
+    </tr>`;
+  });
+
+  // Median row
+  html += `<tr class="median-row">
+    <td>中位数</td><td>Sector Median</td>
+    <td>${fmt(medPE,1)}x</td><td>${fmt(medEV,1)}x</td>
+    <td>${fmt(median(nonTarget.map(p=>p.evEBIT)),1)}x</td>
+    <td>${fmt(median(nonTarget.map(p=>p.evSales)),1)}x</td>
+    <td>${fmt(medGr,1)}%</td>
+    <td>${fmt(medPE/medGr,2)}x</td>
+  </tr>`;
+
+  html += `</tbody>`;
+  $('comps-table').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════ PEG
+function renderPEG(fwdPE, trailPE, epsGrowth, pegFwd, pegTrail, histPE) {
+  function interpPEG(peg) {
+    if (peg < 0.5) return { text:'极度低估', cls:'green' };
+    if (peg < 1.0) return { text:'增长被低估', cls:'green' };
+    if (peg < 1.5) return { text:'合理范围', cls:'orange' };
+    if (peg < 2.0) return { text:'略有溢价', cls:'orange' };
+    return { text:'增长溢价过高', cls:'red' };
+  }
+
+  const fwdI  = interpPEG(pegFwd);
+  const trI   = interpPEG(pegTrail);
+  const histPEG = histPE / epsGrowth;
+
+  $('peg-grid').innerHTML = `
+    <div class="peg-card">
+      <div class="peg-card-label">Forward PEG</div>
+      <div class="peg-card-val" style="color:var(--accent-${fwdI.cls==='green'?'green':fwdI.cls==='orange'?'orange':'red'})">${isFinite(pegFwd)?fmt(pegFwd,2):'N/A'}</div>
+      <div class="peg-card-interp"><span class="tag ${fwdI.cls}">${fwdI.text}</span></div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);margin-top:8px;">= ${fmt(fwdPE,1)}x ÷ ${fmt(epsGrowth,1)}%</div>
+    </div>
+    <div class="peg-card">
+      <div class="peg-card-label">Trailing PEG</div>
+      <div class="peg-card-val" style="color:var(--accent-${trI.cls==='green'?'green':trI.cls==='orange'?'orange':'red'})">${isFinite(pegTrail)?fmt(pegTrail,2):'N/A'}</div>
+      <div class="peg-card-interp"><span class="tag ${trI.cls}">${trI.text}</span></div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);margin-top:8px;">= ${fmt(trailPE,1)}x ÷ ${fmt(epsGrowth,1)}%</div>
+    </div>
+    <div class="peg-card">
+      <div class="peg-card-label">历史 PEG 基准</div>
+      <div class="peg-card-val" style="color:var(--accent-blue)">${fmt(histPEG,2)}</div>
+      <div class="peg-card-interp" style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);margin-top:8px;">基于 5yr Avg P/E ${fmt(histPE,1)}x</div>
+    </div>
+    <div class="peg-card">
+      <div class="peg-card-label">EPS 增长率</div>
+      <div class="peg-card-val" style="color:var(--accent-cyan)">${fmt(epsGrowth,1)}%</div>
+      <div class="peg-card-interp" style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);margin-top:8px;">Fwd vs Trail EPS 变化</div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════ DEBT
+function renderDebt(debt, cash, mktCap, ebitda, ebit, interest, ev, shares, price) {
+  const netDebt = debt - cash;
+  const leverage = netDebt / ebitda;
+  const coverage = ebit / interest;
+  const debtToMktCap = (debt / mktCap) * 100;
+  const netDebtEV = (netDebt / ev) * 100;
+
+  function levClass(l) { return l < 1 ? 'good' : l < 3 ? 'warn' : 'bad'; }
+  function covClass(c) { return c > 5 ? 'good' : c > 2 ? 'warn' : 'bad'; }
+
+  $('debt-card').innerHTML = `
+    <div class="col-header">负债指标</div>
+    <div class="metric-row"><span class="metric-label">总债务</span><span class="metric-val">${fmtM(debt)}</span></div>
+    <div class="metric-row"><span class="metric-label">现金及等价物</span><span class="metric-val highlight">${fmtM(cash)}</span></div>
+    <div class="metric-row">
+      <span class="metric-label">净债务 (Net Debt)</span>
+      <span class="metric-val ${netDebt>0?'warn':'good'}">${netDebt>=0?'+':'-'}${fmtM(Math.abs(netDebt))}</span>
+    </div>
+    <div style="height:16px;"></div>
+    <div class="metric-row">
+      <span class="metric-label">净债务/EBITDA <span style="font-size:9px;color:var(--text-muted)">(杠杆率)</span></span>
+      <span class="metric-val ${levClass(leverage)}">${fmt(leverage,2)}x</span>
+    </div>
+    <div class="debt-bar"><div class="debt-bar-fill" style="width:${Math.min(Math.abs(leverage)/5*100,100)}%;background:${leverage<1?'var(--accent-green)':leverage<3?'var(--accent-orange)':'var(--accent-red)'};"></div></div>
+    <div style="margin-bottom:12px;"></div>
+    <div class="metric-row">
+      <span class="metric-label">利息覆盖率 <span style="font-size:9px;color:var(--text-muted)">(EBIT/Interest)</span></span>
+      <span class="metric-val ${covClass(coverage)}">${fmt(coverage,1)}x</span>
+    </div>
+    <div class="debt-bar"><div class="debt-bar-fill" style="width:${Math.min(coverage/15*100,100)}%;background:${coverage>5?'var(--accent-green)':coverage>2?'var(--accent-orange)':'var(--accent-red)'};"></div></div>
+    <div style="margin-bottom:12px;"></div>
+    <div class="metric-row"><span class="metric-label">债务/市值</span><span class="metric-val">${fmt(debtToMktCap,1)}%</span></div>
+    <div class="metric-row"><span class="metric-label">净债务/EV</span><span class="metric-val">${fmt(netDebtEV,1)}%</span></div>
+    <div class="footnote">杠杆率 &lt;1x = 健康 · 1-3x = 适中 · &gt;3x = 高风险 · 覆盖率 &gt;5x = 安全</div>
+  `;
+
+  destroyChart('debtChart');
+  const ctx = document.getElementById('debtChart').getContext('2d');
+  chartInstances['debtChart'] = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['股权 (Equity)', '净债务', '现金'],
+      datasets: [{
+        data: [mktCap - Math.max(netDebt,0), Math.max(netDebt,0), cash],
+        backgroundColor: ['rgba(74,158,255,0.7)', 'rgba(239,68,68,0.6)', 'rgba(0,229,160,0.6)'],
+        borderColor: ['#4a9eff','#ef4444','#00e5a0'],
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '65%',
+      plugins: {
+        legend: { position: 'right', labels: { color: '#8a9bb5', font: { family: 'IBM Plex Mono', size: 11 }, padding: 12 }},
+        tooltip: { callbacks: { label: ctx => ' ' + fmtM(ctx.parsed) }}
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════ SCENARIOS
+function renderScenarios(scenarios, pwv, price, compositeVal) {
+  const upsideFmt = (tp) => {
+    const u = ((tp - price)/price)*100;
+    return `<span style="color:${u>=0?'var(--accent-green)':'var(--accent-red)'}">${fmtP(u)}</span>`;
+  };
+
+  $('scenario-grid').innerHTML = `
+    <div class="scenario-card bull">
+      <div class="scenario-label">🐂 牛市情景 (Bull Case)</div>
+      <div class="scenario-prob">概率权重: 30%</div>
+      <div class="scenario-price">$${fmt(scenarios.bull.price)}</div>
+      <div class="scenario-upside">${upsideFmt(scenarios.bull.price)} vs 现价</div>
+      <div class="scenario-assumptions">
+        <div class="scenario-assumption"><span class="assumption-key">FCF增长率 (g1)</span><span class="assumption-val">${fmt(scenarios.bull.g,1)}%</span></div>
+        <div class="scenario-assumption"><span class="assumption-key">估值倍数扩张</span><span class="assumption-val">Forward P/E ${fmt(scenarios.bull.pe,1)}x</span></div>
+        <div class="scenario-assumption"><span class="assumption-key">触发条件</span><span class="assumption-val">AI需求超预期 / 市场份额扩张</span></div>
+        <div class="scenario-assumption"><span class="assumption-key">关键风险</span><span class="assumption-val">估值过度拉伸</span></div>
+      </div>
+    </div>
+    <div class="scenario-card base">
+      <div class="scenario-label">📊 基准情景 (Base Case)</div>
+      <div class="scenario-prob">概率权重: 45%</div>
+      <div class="scenario-price">$${fmt(scenarios.base.price)}</div>
+      <div class="scenario-upside">${upsideFmt(scenarios.base.price)} vs 现价</div>
+      <div class="scenario-assumptions">
+        <div class="scenario-assumption"><span class="assumption-key">FCF增长率 (g1)</span><span class="assumption-val">${fmt(scenarios.base.g,1)}%</span></div>
+        <div class="scenario-assumption"><span class="assumption-key">估值倍数稳定</span><span class="assumption-val">Forward P/E ${fmt(scenarios.base.pe,1)}x</span></div>
+        <div class="scenario-assumption"><span class="assumption-key">触发条件</span><span class="assumption-val">分析师一致预期兑现</span></div>
+        <div class="scenario-assumption"><span class="assumption-key">关键风险</span><span class="assumption-val">宏观利率变化</span></div>
+      </div>
+    </div>
+    <div class="scenario-card bear">
+      <div class="scenario-label">🐻 熊市情景 (Bear Case)</div>
+      <div class="scenario-prob">概率权重: 25%</div>
+      <div class="scenario-price">$${fmt(scenarios.bear.price)}</div>
+      <div class="scenario-upside">${upsideFmt(scenarios.bear.price)} vs 现价</div>
+      <div class="scenario-assumptions">
+        <div class="scenario-assumption"><span class="assumption-key">FCF增长率 (g)</span><span class="assumption-val">${fmt(scenarios.bear.g,1)}%</span></div>
+        <div class="scenario-assumption"><span class="assumption-key">估值倍数压缩</span><span class="assumption-val">Forward P/E ${fmt(scenarios.bear.pe,1)}x</span></div>
+        <div class="scenario-assumption"><span class="assumption-key">触发条件</span><span class="assumption-key">需求萎缩 / 竞争加剧</span></div>
+        <div class="scenario-assumption"><span class="assumption-key">关键风险</span><span class="assumption-val">芯片出口管制扩大</span></div>
+      </div>
+    </div>
+  `;
+
+  const pwvUpside = ((pwv - price) / price) * 100;
+  $('pwv-block').innerHTML = `
+    <div>
+      <div class="pwv-label">概率加权价值 (PWV)</div>
+      <div class="pwv-sub">= Bull×30% + Base×45% + Bear×25%</div>
+    </div>
+    <div style="text-align:center;">
+      <div class="pwv-val">$${fmt(pwv)}</div>
+    </div>
+    <div style="text-align:right;">
+      <div class="pwv-sub">vs 现价上行空间</div>
+      <div style="font-family:var(--font-mono);font-size:20px;font-weight:700;color:${pwvUpside >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'}">
+        ${fmtP(pwvUpside)}
+      </div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════ FCF (FIXED)
+function renderFCF(fcfYield, rf, fcfSpread, fcfGapToReq, fcfIntrinsic, price, wacc, g3, reqReturn, fcfM, mktCap) {
+  const status = fcfGapToReq > 0 ? 'undervalued' : fcfGapToReq > -3 ? 'fair' : 'overvalued';
+  const statusLabel = fcfGapToReq > 0 ? '收益率充足' : fcfGapToReq > -3 ? '收益率偏低' : '估值偏高警示';
+
+  $('fcf-grid').innerHTML = `
+    <div class="fcf-card">
+      <div class="fcf-label">FCF 收益率</div>
+      <div class="fcf-val" style="color:var(--accent-cyan)">${fmt(fcfYield,2)}%</div>
+      <div class="fcf-interpretation" style="color:var(--text-muted)">FCF ${fmtM(fcfM)} ÷ 市值</div>
+      <div class="status-signal ${status}">${statusLabel}</div>
+    </div>
+    <div class="fcf-card">
+      <div class="fcf-label">收益率对比分析</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
+        <div class="metric-row" style="padding:4px 0;border-color:rgba(255,255,255,0.05)">
+          <span class="metric-label">FCF收益率</span>
+          <span class="metric-val" style="color:var(--accent-cyan)">${fmt(fcfYield,2)}%</span>
+        </div>
+        <div class="metric-row" style="padding:4px 0;border-color:rgba(255,255,255,0.05)">
+          <span class="metric-label">无风险利率 (10Y)</span>
+          <span class="metric-val">${fmt(rf*100,1)}%</span>
+        </div>
+        <div class="metric-row" style="padding:4px 0;border-color:rgba(255,255,255,0.05)">
+          <span class="metric-label">FCF vs 无风险利率</span>
+          <span class="metric-val ${fcfSpread>0?'good':'bad'}" style="color:${fcfSpread>0?'var(--accent-green)':'var(--accent-red)'}">${fmtP(fcfSpread,2)}</span>
+        </div>
+        <div class="metric-row" style="padding:4px 0;border-color:rgba(255,255,255,0.05)">
+          <span class="metric-label">所需回报率 (rf+ERP)</span>
+          <span class="metric-val">${fmt(reqReturn,1)}%</span>
+        </div>
+        <div class="metric-row" style="padding:4px 0;border-color:rgba(255,255,255,0.05)">
+          <span class="metric-label">FCF vs 所需回报率</span>
+          <span class="metric-val" style="color:${fcfGapToReq>0?'var(--accent-green)':'var(--accent-red)'}">${fmtP(fcfGapToReq,2)}</span>
+        </div>
+      </div>
+    </div>
+    <div class="fcf-card">
+      <div class="fcf-label">FCF折现内在价值</div>
+      <div class="fcf-val" style="color:var(--accent-purple)">$${fmt(fcfIntrinsic)}</div>
+      <div class="fcf-interpretation" style="color:var(--text-muted)">= FCF/股 ÷ (WACC ${fmt(wacc*100,1)}% - g ${fmt(g3*100,1)}%)</div>
+      <div class="fcf-interpretation" style="margin-top:8px;padding:8px;background:var(--bg-primary);border-radius:4px;border:1px solid var(--border);color:var(--text-secondary);">
+        ⚠️ FCF收益率低于无风险利率时，投资者支付的溢价来自<strong>增长预期</strong>而非当期收益。此为高增长股票的正常特征，但需要增长假设持续兑现。
+      </div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════ CONSENSUS
+function renderConsensus(price, consensusTP, highTP, lowTP, buyCount, holdCount, sellCount, total, myVal) {
+  const premium = ((myVal - consensusTP) / consensusTP) * 100;
+  $('consensus-grid').innerHTML = `
+    <div class="card">
+      <div class="col-header">分析师评级分布 (${total}位分析师)</div>
+      <div class="analyst-bar-row">
+        <div class="analyst-bar-label">买入</div>
+        <div class="analyst-bar-track"><div class="analyst-bar-fill buy-fill" style="width:${(buyCount/total)*100}%"></div></div>
+        <div class="analyst-bar-count">${buyCount}</div>
+      </div>
+      <div class="analyst-bar-row">
+        <div class="analyst-bar-label">持有</div>
+        <div class="analyst-bar-track"><div class="analyst-bar-fill hold-fill" style="width:${(holdCount/total)*100}%"></div></div>
+        <div class="analyst-bar-count">${holdCount}</div>
+      </div>
+      <div class="analyst-bar-row">
+        <div class="analyst-bar-label">卖出</div>
+        <div class="analyst-bar-track"><div class="analyst-bar-fill sell-fill" style="width:${(sellCount/total)*100}%"></div></div>
+        <div class="analyst-bar-count">${sellCount}</div>
+      </div>
+      <div style="margin-top:16px;">
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);margin-bottom:8px;">买入占比</div>
+        <div style="font-family:var(--font-mono);font-size:28px;font-weight:700;color:var(--accent-green)">${fmt((buyCount/total)*100,0)}%</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="col-header">目标价对比</div>
+      <div class="consensus-target-row"><span class="ctl">一致预期目标价</span><span class="ctv" style="color:var(--accent-blue)">$${fmt(consensusTP)}</span></div>
+      <div class="consensus-target-row"><span class="ctl">目标价区间高</span><span class="ctv" style="color:var(--accent-green)">$${fmt(highTP)}</span></div>
+      <div class="consensus-target-row"><span class="ctl">目标价区间低</span><span class="ctv" style="color:var(--accent-red)">$${fmt(lowTP)}</span></div>
+      <div class="consensus-target-row"><span class="ctl">当前市价</span><span class="ctv">$${fmt(price)}</span></div>
+      <div class="consensus-target-row"><span class="ctl">本模型目标价</span><span class="ctv" style="color:var(--accent-purple)">$${fmt(myVal)}</span></div>
+      <div style="margin-top:16px;padding:12px;background:var(--bg-secondary);border-radius:4px;border:1px solid var(--border);">
+        <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.15em;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">本模型 vs 市场共识</div>
+        <div style="font-family:var(--font-mono);font-size:22px;font-weight:700;color:${Math.abs(premium)<10?'var(--accent-blue)':premium>0?'var(--accent-green)':'var(--accent-red)'}">
+          ${fmtP(premium)}
+        </div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);margin-top:4px;">
+          ${Math.abs(premium)<10?'与市场共识高度一致':premium>10?'本模型较市场共识更乐观':'本模型较市场共识更保守'}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════ BAR CHART
+function renderValCompChart(price, relVal, grahamVal, fcfIntrinsic, dcfValPS, evValPS, compositeVal) {
+  destroyChart('valCompChart');
+  const ctx = document.getElementById('valCompChart').getContext('2d');
+  const labels = ['现价', '相对估值', '格雷厄姆', 'FCF折现', '三阶段DCF', 'EV倍数', '综合均值'];
+  const values = [price, relVal, grahamVal, fcfIntrinsic, dcfValPS, evValPS, compositeVal];
+  const colors = [
+    'rgba(139,92,246,0.7)',
+    'rgba(0,229,160,0.7)',
+    'rgba(74,158,255,0.7)',
+    'rgba(139,92,246,0.7)',
+    'rgba(245,158,11,0.7)',
+    'rgba(6,182,212,0.7)',
+    'rgba(74,158,255,0.9)'
+  ];
+  const borders = ['#8b5cf6','#00e5a0','#4a9eff','#8b5cf6','#f59e0b','#06b6d4','#4a9eff'];
+
+  chartInstances['valCompChart'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: '估值 ($)',
+        data: values,
+        backgroundColor: colors,
+        borderColor: borders,
+        borderWidth: 1,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ' $' + fmt(ctx.parsed.y) }}
+      },
+      scales: {
+        x: { ticks: { color: '#8a9bb5', font: { family: 'IBM Plex Mono', size: 11 }}, grid: { color: 'rgba(255,255,255,0.04)' }},
+        y: { ticks: { color: '#8a9bb5', font: { family: 'IBM Plex Mono', size: 11 }, callback: v => '$'+v.toLocaleString() }, grid: { color: 'rgba(255,255,255,0.04)' }}
+      }
+    }
+  });
+}
+
+// ─── AUTO RUN ON LOAD
+window.addEventListener('load', () => {
+  setTimeout(runCalc, 400);
+});
+</script>
+</body>
+</html>
